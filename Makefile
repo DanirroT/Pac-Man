@@ -13,7 +13,8 @@ RM = rm -fr
 install: $(VENV)
 	@$(VENV)/bin/pip install --upgrade pip
 	@$(VENV)/bin/pip install -r requirements.txt
-	
+	@source $(VENV)/bin/activate
+
 
 $(VENV):
 	@$(PYTHON) -m venv $(VENV)
