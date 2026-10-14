@@ -1,3 +1,4 @@
+from src import Maze
 from typing import Any
 
 
@@ -28,7 +29,8 @@ class PacMan:
                 try:
                     self.highscore.append((split_line[0], int(split_line[1])))
                 except (ValueError, IndexError):
-                    print(f"Invalid line '{line}' in highscore file. Skipping.")
+                    print(
+                        f"Invalid line '{line}' in highscore file. Skipping.")
         except FileNotFoundError:
             pass
 
