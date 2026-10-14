@@ -1,5 +1,6 @@
-from src import Maze
+from src import Maze, get_from_json_file
 from typing import Any
+import json
 
 
 class PacMan:
@@ -20,19 +21,13 @@ class PacMan:
         print(f"Running Pac-Man with arguments: {self.args}")
 
     def load_highscore(self):
-        self.highscore = []
         try:
-            with open(self.args["highscore_filename"], "r") as file:
-                file_lines = file.read().splitlines()
-            for line in file_lines:
-                split_line = line.split()
-                try:
-                    self.highscore.append((split_line[0], int(split_line[1])))
-                except (ValueError, IndexError):
-                    print(
-                        f"Invalid line '{line}' in highscore file. Skipping.")
+            self.highscore = get_from_json_file(
+                self.args["highscore_filename"])
         except FileNotFoundError:
-            pass
+            with open(self.args["highscore_filename"], "x"):
+                pass
+            self.highscore = []
 
     def add_highscore(self, name: str, score: int):
         self.highscore.append((name, score))
@@ -41,8 +36,7 @@ class PacMan:
     def save_highscore(self):
 
         with open(self.args["highscore_filename"], "w") as file:
-            for name, score in self.highscore:
-                file.write(f"{name} {score}\n")
+            json.dump(self.highscore, file, indent=4)
 
     # "highscore_filename": "highscore.txt",
     # "levels": [],
