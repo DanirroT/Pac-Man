@@ -3,6 +3,8 @@ OBJ = $(SRC)*.py
 
 VENV = .venv/
 
+NO_PG_MSG = PYGAME_HIDE_SUPPORT_PROMPT=1
+
 PYTHON = python3
 DEBUGGER = $(PYTHON) pdb
 
@@ -20,10 +22,10 @@ $(VENV):
 	@$(PYTHON) -m venv $(VENV)
 
 run:
-	@$(PYTHON) $(SRC) config_file.json
+	@$(NO_PG_MSG) $(PYTHON) $(SRC) config_file.json
 
 debug:
-	@$(DEBUGGER) $(MAIN).py config_file.json
+	@$(NO_PG_MSG) $(DEBUGGER) $(MAIN).py config_file.json
 
 clean:
 	@$(RM) ./__pycache__/ ./.mypy_cache/
@@ -42,3 +44,6 @@ lint-strict:
 
 %:
 	@:
+
+run_dan:
+	@$(NO_PG_MSG) $(PYTHON) dan_test.py config_file.json

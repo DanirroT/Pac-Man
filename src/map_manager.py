@@ -1,20 +1,62 @@
-from src import MapGenerator
+
+from src import CoordinatesFloat, PMArgs, MazeGenerator, Coordinates
+from typing import NamedTuple
 from enum import Enum
-from typing import Any
 import random
 
 
-class StartingObjects(Enum):
+class Directions(Enum):
+    UP = "u"
+    RIGHT = "r"
+    DOWN = "d"
+    LEFT = "l"
 
-    PLAYER = 1
 
-    RED_GHOST = 2
-    PINK_GHOST = 3
-    BLUE_GHOST = 4
-    ORANGE_GHOST = 5
+class Player():
 
-    PACGUM = 6
-    SUPERGUM = 7
+    pos: CoordinatesFloat
+    dir: Directions
+
+    def __init__(self, pos: Coordinates,
+                 dir: Directions = Directions.RIGHT) -> None:
+        self.pos = CoordinatesFloat(*pos)
+        self.dir = dir
+
+    def change_dir(self, dir: Directions) -> None:
+        self.dir = dir
+
+    def move(self, movement: float) -> None:
+        self.pos = CoordinatesFloat(
+            self.pos.x + (movement if "r" in self.dir.value else 0)
+            - (movement if "l" in self.dir.value else 0),
+            self.pos.y + (movement if "d" in self.dir.value else 0)
+            - (movement if "u" in self.dir.value else 0)
+        )
+
+
+class Ghost():
+
+    pos: CoordinatesFloat
+    dir: Directions
+    color: tuple[int, int, int]
+    # ai: DecisionAlgorithm
+
+    def __init__(self, color: tuple[int, int, int], pos: Coordinates,
+                 dir: Directions = Directions.RIGHT) -> None:
+        self.pos = CoordinatesFloat(*pos)
+        self.dir = dir
+        self.color = color
+
+    def change_dir(self, dir: Directions) -> None:
+        self.dir = dir
+
+    def move(self, movement: float) -> None:
+        self.pos = CoordinatesFloat(
+            self.pos.x + (movement if "r" in self.dir.value else 0)
+            - (movement if "l" in self.dir.value else 0),
+            self.pos.y + (movement if "d" in self.dir.value else 0)
+            - (movement if "u" in self.dir.value else 0)
+        )
 
 
 class CellState(Enum):
@@ -27,21 +69,27 @@ class CellState(Enum):
     CORNER = 5
 
 
+class Walls(NamedTuple):
+    up: bool
+    right: bool
+    down: bool
+    left: bool
+
+
 class Cell:
-    x: int
+    loc: Coordinates
     y: int
-    walls: tuple[bool, bool, bool, bool]
-    starting_objects: list[StartingObjects]
+    walls: Walls
+    # starting_objects: list[StartingObjects]
     state: CellState
 
-    def __init__(self, x: int, y: int, value: int):
-        self.x = x
-        self.y = y
-        self.walls = (
+    def __init__(self, loc: Coordinates, value: int):
+        self.loc = loc
+        self.walls = Walls(
             bool(value & 1),  # left wall
-            bool(value & 2),  # top wall
+            bool(value & 2),  # bottom wall
             bool(value & 4),  # right wall
-            bool(value & 8),  # bottom wall
+            bool(value & 8),  # top wall
         )
         wall_count = sum(self.walls)
 
@@ -51,94 +99,125 @@ class Cell:
             self.state = CellState.DEADEND
 
         elif wall_count == 2:
-            if ((self.walls[0] and self.walls[2]) or
-                (self.walls[1] and self.walls[3])):
+            if ((self.walls.up and self.walls.down) or
+                    (self.walls.left and self.walls.right)):
                 self.state = CellState.CORRIDOR
             else:
                 self.state = CellState.CORNER
         else:
             self.state = CellState.FORK
 
-        self.starting_objects = []
+        # self.starting_objects = []
 
 
 class MazeObj:
 
     maze_int: list[list[int]]
-    size: tuple[int, int]
+    size: Coordinates
 
     maze: list[list[Cell]]
 
     def __init__(self, maze_int: list[list[int]]):
         self.maze_int = maze_int
-        self.size = (len(maze_int[0]), len(maze_int))
+        self.size = Coordinates(len(maze_int[0]), len(maze_int))
 
         self.maze = []
         for y, row in enumerate(maze_int):
             self.maze.append([])
             for x, value in enumerate(row):
-                self.maze[y].append(Cell(x, y, value))
+                self.maze[y].append(Cell(Coordinates(x, y), value))
+
+    def __str__(self) -> str:
+        return "\n".join("".join(str(cell.state.value) for cell in row)
+                         for row in self.maze)
 
 
 class Maze:
 
-    args: dict[str, Any]
+    args: PMArgs
 
     player: Player
 
-    red_ghost: Ghost
-    pink_ghost: Ghost
-    blue_ghost: Ghost
-    orange_ghost: Ghost
+    ghosts: list[Ghost]
+
+    supergum: list[Coordinates]
+    pacgum: list[Coordinates]
 
     maze: MazeObj
+    current_map: int
 
-    def __init__(self, args: dict[str, Any]):
+    def __init__(self, args: PMArgs):
 
         self.args = args
+        self.current_map = -1
 
-        map_generator = MapGenerator(args["height"], args["width"], args["seed"])
-        map_int = map_generator.get_map()
+    def load_pre_set(self) -> None:
+
+        map_generator = MazeGenerator(Coordinates(1, 1))
+        map_int = map_generator.use_preset_maze()
+        self.maze = MazeObj(map_int)
+        self.setup_map()
+
+    def load_next_map(self) -> None:
+
+        self.current_map += 1
+
+        map_generator = MazeGenerator(self.args.levels[self.current_map],
+                                      self.args.seed)
+        map_int = map_generator.generate_maze()
         self.maze = MazeObj(map_int)
 
         self.setup_map()
 
     def setup_map(self):
-        self.maze.maze[0][0].starting_objects += [
-            StartingObjects.RED_GHOST, StartingObjects.SUPERGUM]
-        self.maze.maze[0][self.maze.size[1]-1].starting_objects += [
-            StartingObjects.PINK_GHOST, StartingObjects.SUPERGUM]
-        self.maze.maze[self.maze.size[0]-1][0].starting_objects += [
-            StartingObjects.BLUE_GHOST, StartingObjects.SUPERGUM]
-        self.maze.maze[self.maze.size[0]-1][self.maze.size[1]-1].starting_objects += [
-            StartingObjects.ORANGE_GHOST, StartingObjects.SUPERGUM]
 
-        player_original = (self.maze.size[0] // 2, self.maze.size[1] // 2)
+        self.ghosts = [
+            Ghost((255, 0, 0), Coordinates(0, 0), Directions.RIGHT),
+            Ghost((255, 184, 255), Coordinates(0, self.maze.size.y-1),
+                  Directions.DOWN),
+            Ghost((0, 255, 255), Coordinates(self.maze.size.x-1, 0),
+                  Directions.LEFT),
+            Ghost((255, 184, 81), Coordinates(
+                self.maze.size.x-1, self.maze.size.y-1), Directions.UP)
+        ]
+
+        self.supergum = [
+            Coordinates(0, 0), Coordinates(self.maze.size.x-1, 0),
+            Coordinates(0, self.maze.size.y-1),
+            Coordinates(self.maze.size.x-1, self.maze.size.y-1)
+        ]
+
+        player_original = (self.maze.size.x // 2, self.maze.size.y // 2)
         player_position = player_original
-        change_list = [(1, 0), (0, 1), (-1, 0), (0, -1), (1, 1), (-1, 1), (-1, -1), (1, -1)]
+        change_list = [(1, 0), (0, 1), (-1, 0), (0, -1),
+                       (1, 1), (-1, 1), (-1, -1), (1, -1)]
 
         while True:
-            if self.maze.maze[player_position[1]][player_position[0]].state == CellState.BLOCKED:
+            if (self.maze.maze[player_position[1]][player_position[0]].state
+                    == CellState.BLOCKED):
                 change = change_list.pop(0)
-                player_position = player_original[0] + change[0], player_original[1] + change[1]
+                player_position = (player_original[0] + change[0],
+                                   player_original[1] + change[1])
                 continue
             else:
-                self.maze.maze[player_position[1]][player_position[0]].starting_objects.append(StartingObjects.PLAYER)
+                self.player = Player(
+                    Coordinates(player_position[0], player_position[1]))
                 break
 
-        n_pacgums: int = self.args["pacgum"]
+        n_pacgums: int = self.args.pacgum
+        self.pacgum = []
+        random.seed(self.args.seed)
 
         while n_pacgums:
-            random.seed(self.args["seed"])
-            x = random.randint(0, self.maze.size[0] - 1)
-            y = random.randint(0, self.maze.size[1] - 1)
-            if ((x == 0 or x == self.maze.size[0] - 1) and
-                (y == 0 or y == self.maze.size[1] - 1)):
+            attempt = Coordinates(random.randint(0, self.maze.size[0] - 1),
+                                  random.randint(0, self.maze.size[1] - 1))
+            print(attempt)
+            if ((attempt.x == 0 or attempt.x == self.maze.size[0] - 1) and
+                    (attempt.y == 0 or attempt.y == self.maze.size[1] - 1)):
                 continue
-            if self.maze.maze[y][x].state == CellState.BLOCKED:
+            if self.maze.maze[attempt.y][attempt.x].state == CellState.BLOCKED:
                 continue
-            if (StartingObjects.PACGUM in self.maze.maze[y][x].starting_objects
-                or StartingObjects.PLAYER in self.maze.maze[y][x].starting_objects):
+            if attempt in self.pacgum or self.player.pos == attempt:
                 continue
-            self.maze.maze[y][x].starting_objects.append(StartingObjects.PACGUM)
+            self.pacgum.append(attempt)
             n_pacgums -= 1

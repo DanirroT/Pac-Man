@@ -2,6 +2,21 @@ import sys
 import json
 from typing import Any
 from pathlib import Path
+from pydantic import BaseModel, Field
+from src import Coordinates
+
+
+class PMArgs(BaseModel):
+    highscore_filename: str = Field(min_length=1)
+    # levels: list[Coordinates] = Field(min_length=10)
+    levels: list[Coordinates] = Field()
+    lives: int = Field(gt=0)
+    pacgum: int = Field(gt=0)
+    points_per_pacgum: int = Field(gt=0)
+    points_per_super_pacgum: int = Field(gt=0)
+    points_per_ghost: int = Field(gt=0)
+    seed: int
+    level_max_time: int = Field(gt=0)
 
 
 def get_from_json_file(file_path: str | Path,
@@ -25,9 +40,9 @@ def get_from_json_file(file_path: str | Path,
     return output
 
 
-def input_args() -> dict[str, Any]:
+def input_args() -> PMArgs:
     if len(sys.argv) != 2:
         print("Usage: python pac-man.py <config_file>")
         sys.exit(1)
 
-    return get_from_json_file(sys.argv[1])
+    return PMArgs(**get_from_json_file(sys.argv[1]))
