@@ -389,7 +389,7 @@ class WindowedVisualizer():
         pygame.display.update()
 
     def show_start(self, high_scores: list[tuple[str, int]] = []) -> None:
-        if not len(self.highscore) and len(high_scores):
+        if len(high_scores):
             self.highscore = high_scores[:10]
         self.screen.blit(self.start_static, (0, 0))
 

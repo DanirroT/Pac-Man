@@ -32,8 +32,8 @@ class PacMan:
 
     def load_highscore(self) -> None:
         try:
-            self.highscore = get_from_json_file(
-                self.args.highscore_filename)
+            self.highscore = [(n, s) for n, s in (
+                get_from_json_file(self.args.highscore_filename))]
         except FileNotFoundError:
             with open(self.args.highscore_filename, "x"):
                 pass
@@ -46,10 +46,9 @@ class PacMan:
     def save_highscore(self) -> None:
 
         with open(self.args.highscore_filename, "w") as file:
-            json.dump(self.highscore, file, indent=4)
+            json.dump(self.highscore[:100], file, indent=4)
 
     def run_program(self) -> None:
-        import pygame
         # print("Start Sim")
         # self.visualizer.screen.blit(self.visualizer.background, (0, 0))
 
@@ -111,7 +110,8 @@ class PacMan:
             self.visualizer.terminate()
 
     def process_menu_events(self, event: Event) -> None:
-
+        if self.current_screen == Screens.START:
+            self.maze.current_map = -1
         if event.type == pygame.KEYDOWN:
             if (event.key == pygame.K_RETURN):
                 try:
@@ -139,8 +139,8 @@ class PacMan:
             elif (event.key == pygame.K_RETURN):
                 if self.player_name:
                     self.add_highscore(self.player_name, self.maze.score)
-                    self.player_name = ""
-                    self.maze.score = 0
+                self.player_name = ""
+                self.maze.score = 0
                 self.current_screen = Screens.START
 
             elif (event.key == pygame.K_BACKSPACE):
@@ -148,8 +148,14 @@ class PacMan:
             else:
                 self.player_name += event.unicode
 
-            self.visualizer.update_display(self.current_screen,
-                                           player_name=self.player_name)
+            if self.current_screen == Screens.START:
+                print("Start")
+                print(self.highscore)
+                self.visualizer.show_start(self.highscore)
+            else:
+                print("continue")
+                self.visualizer.update_display(
+                    self.current_screen, player_name=self.player_name)
 
     def process_game_events(self, event: Event) -> None:
 
