@@ -1,28 +1,13 @@
-from enum import Enum
-from src import Coordinates, CoordinatesFloat, Maze, CellState
+from __future__ import annotations
+from src import Coordinates, CoordinatesFloat, Screens, Maze, CellState, SqPOI
+from typing import TYPE_CHECKING
 import pygame
-# from pygame.rect import Rect
-from pygame.surface import Surface
-from pygame.font import Font
+
 # from enum import Enum
-
-
-# class MapColors(Enum):
-#     WALL = (0, 0, 0)
-
-
-class SqPOI(Enum):
-    T = "t"
-    R = "r"
-    B = "b"
-    L = "l"
-
-    TR = "tr"
-    BR = "br"
-    BL = "bl"
-    TL = "tl"
-
-    C = "c"
+if TYPE_CHECKING:
+    # from pygame.rect import Rect
+    from pygame.surface import Surface
+    from pygame.font import Font
 
 
 class WindowedVisualizer():
@@ -35,6 +20,7 @@ class WindowedVisualizer():
     scale: Coordinates
 
     start_static: Surface
+    highscore: list[tuple[str, int]]
     win_static: Surface
     lose_static: Surface
 
@@ -42,8 +28,10 @@ class WindowedVisualizer():
     maze_background: Surface
     middle_map: CoordinatesFloat
 
-    def __init__(self, high_scores: list[tuple[str, int]]) -> None:
+    def __init__(self) -> None:
         pygame.init()
+
+        self.highscore = []
 
         self.screen = pygame.display.set_mode(self.dimensions,
                                               pygame.RESIZABLE)
@@ -68,18 +56,18 @@ class WindowedVisualizer():
         """
 
         """
-        print()
-        print()
-        print("original list", pos)
+       - print()
+       - print()
+       - print("original list", pos)
 
-        print("to cell relative", (pos.x - self.middle_map.x),
+       - print("to cell relative", (pos.x - self.middle_map.x),
               (pos.y - self.middle_map.y))
 
-        print("to pixel relative",
+       - print("to pixel relative",
               (pos.x - self.middle_map.x) * self.cell_size,
               (pos.y - self.middle_map.y) * self.cell_size)
-        print()
-        print("absolute pixel pos", Coordinates(
+       - print()
+       - print("absolute pixel pos", Coordinates(
             round(((pos.x - self.middle_map.x) * self.cell_size)
                   + self.dimensions.x/2),
             round(((pos.y - self.middle_map.y) * self.cell_size)
@@ -94,7 +82,7 @@ class WindowedVisualizer():
             + self.dimensions.y/2)),
             5)
 
-        print("absolute pixel pos TL", Coordinates(
+       - print("absolute pixel pos TL", Coordinates(
             round(((pos.x - self.middle_map.x) * self.cell_size)
                   + self.dimensions.x/2 - (self.cell_size / 2)),
             round(((pos.y - self.middle_map.y) * self.cell_size)
@@ -124,7 +112,7 @@ class WindowedVisualizer():
 
     def build_menus(self) -> None:
 
-        self.text_size = 20
+        self.text_size = (self.dimensions.y - 2 * self.margins.y) // 15
 
         self.title_1_font = pygame.font.SysFont(
             'freesanbold.ttf', self.text_size * 2, bold=True)
@@ -139,11 +127,12 @@ class WindowedVisualizer():
 
         start_title = self.title_1_font.render("Pac-Man", True, (255, 255, 0))
         self.start_static.blit(start_title, start_title.get_rect(
-            center=(self.dimensions.x // 2, self.margins.y + 50)))
+            center=(self.dimensions.x // 2, self.margins.y + self.text_size)))
 
         start_hs = self.title_2_font.render("HighScore", True, (255, 255, 255))
         self.start_static.blit(start_hs, start_hs.get_rect(
-            center=(self.dimensions.x // 2, self.margins.y + 150)))
+            center=(self.dimensions.x // 2,
+                    self.margins.y + self.text_size * 3)))
         # start_hs_list = [self.r_text_font.render(
         #     f"{n} {s}", True, (255, 255, 255))
         #     for n, s in self.high_scores[10:]]
@@ -171,8 +160,19 @@ class WindowedVisualizer():
         self.lose_static.blit(lose_score, lose_score.get_rect(
             center=(self.dimensions.x // 2, self.dimensions.y // 2)))
 
-    def show_start(self) -> None:
+    def show_start(self, high_scores: list[tuple[str, int]] = []) -> None:
+        if not len(self.highscore) and len(high_scores):
+            self.highscore = high_scores[:10]
         self.screen.blit(self.start_static, (0, 0))
+
+        for i, (name, score) in enumerate(self.highscore):
+            # print(f"{i + 1}. {name}: {score}")
+            text = self.r_text_font.render(f"{i + 1}. {name}: {score}",
+                                           True, (255, 255, 255))
+            self.screen.blit(text, text.get_rect(
+                center=(self.dimensions.x // 2,
+                        self.margins.y + self.text_size * (5 + i))))
+
         pygame.display.update()
 
     def build_map(self, maze_manager: Maze) -> None:
@@ -199,10 +199,10 @@ class WindowedVisualizer():
         self.s_obj_size = round(self.cell_size / 6)
         self.l_obj_size = round(self.s_obj_size * 2)
 
-        print("cell_size:", self.cell_size)
-        print("s_obj_size:", self.s_obj_size)
-        print("l_obj_size:", self.l_obj_size)
-        print("middle_map:", self.middle_map)
+        # print("cell_size:", self.cell_size)
+        # print("s_obj_size:", self.s_obj_size)
+        # print("l_obj_size:", self.l_obj_size)
+        # print("middle_map:", self.middle_map)
 
         self.text_size = 20
 
@@ -239,15 +239,15 @@ class WindowedVisualizer():
         middle_display = Coordinates(round(self.dimensions.x/2),
                                      round(self.dimensions.y/2))
 
-        print()
-        print("scale:", self.scale)
-        print()
-        print("middle-display:", middle_display)
-        print()
-        print("middle-map:", self.middle_map)
-        print()
-        print("middle-convert:", self.pos_to_display(self.middle_map))
-        print()
+       - print()
+       - print("scale:", self.scale)
+       - print()
+       - print("middle-display:", middle_display)
+       - print()
+       - print("middle-map:", self.middle_map)
+       - print()
+       - print("middle-convert:", self.pos_to_display(self.middle_map))
+       - print()
         pygame.draw.line(self.screen, (0, 0, 0),
                          self.dimensions, (0, 0), 5)
         pygame.draw.line(self.screen, (0, 0, 0),
@@ -301,26 +301,6 @@ class WindowedVisualizer():
                         self.get_sq_poi(cell.loc, SqPOI.BL),
                         self.s_obj_size)
 
-    def resize(self, w: int, h: int, turn: int) -> None:
-
-        self.dimensions = Coordinates(w, h)
-
-        # print("resize to:", w, h)
-        self.build_map(self.maze_manager)
-        self.update_display(turn)
-        pygame.display.update()
-
-    def update_display(self, turn: int) -> None:
-
-        self.screen.blit(self.maze_background, (0, 0))
-
-        self.put_map_obj()
-
-        pygame.display.update()
-
-    def terminate(self) -> None:
-        pygame.quit()
-
     def put_map_obj(self) -> None:
 
         for gum in self.maze_manager.pacgum:
@@ -337,3 +317,39 @@ class WindowedVisualizer():
         pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
             Coordinates(self.maze_manager.maze.size.x // 2,
                         self.maze_manager.maze.size.y // 2)), self.s_obj_size)
+
+    def resize(self, w: int, h: int, current_screen: Screens) -> None:
+
+        self.dimensions = Coordinates(w, h)
+
+        # print("resize to:", w, h)
+        if current_screen == Screens.START:
+            self.build_menus()
+            self.show_start()
+        elif current_screen == Screens.GAME:
+            self.build_map(self.maze_manager)
+            # self.update_display(turn)
+        pygame.display.update()
+
+    def update_display(self) -> None:
+
+        self.screen.blit(self.maze_background, (0, 0))
+
+        self.put_map_obj()
+
+        pygame.display.update()
+
+    def terminate(self) -> None:
+        pygame.quit()
+
+    def pause(self) -> None:
+        pause_overlay = pygame.Surface(self.dimensions)
+        pause_overlay.set_alpha(128)
+        pause_overlay.fill((0, 0, 0))
+        self.screen.blit(pause_overlay, (0, 0))
+
+        pause_text = self.title_1_font.render("Paused", True, (255, 255, 255))
+        self.screen.blit(pause_text, pause_text.get_rect(
+            center=(self.dimensions.x // 2, self.dimensions.y // 2)))
+
+        pygame.display.update()

@@ -1,29 +1,55 @@
 
-from src import CoordinatesFloat, PMArgs, MazeGenerator, Coordinates
+from src import (CoordinatesFloat, PMArgs, MazeGenerator, Coordinates,
+                 Directions)
 from typing import NamedTuple
 from enum import Enum
 import random
-
-
-class Directions(Enum):
-    UP = "u"
-    RIGHT = "r"
-    DOWN = "d"
-    LEFT = "l"
 
 
 class Player():
 
     pos: CoordinatesFloat
     dir: Directions
+    lives: int
 
-    def __init__(self, pos: Coordinates,
-                 dir: Directions = Directions.RIGHT) -> None:
+    invincibility: bool = False
+    wall_phase: bool = False
+    extra_speed: bool = False
+
+    dir_queue: Directions | None = None
+
+    def __init__(self, pos: Coordinates, lives: int,
+                 dir: Directions = Directions.RIGHT
+                 ) -> None:
         self.pos = CoordinatesFloat(*pos)
         self.dir = dir
+        self.lives = lives
 
-    def change_dir(self, dir: Directions) -> None:
-        self.dir = dir
+    def handle_input(self, input_dir: Directions) -> None:
+        if (self.dir == Directions.UP and input_dir == Directions.DOWN or
+            self.dir == Directions.DOWN and input_dir == Directions.UP or
+            self.dir == Directions.LEFT and input_dir == Directions.RIGHT or
+                self.dir == Directions.RIGHT and input_dir == Directions.LEFT):
+            self.dir = input_dir
+            return
+
+        if self.dir == input_dir:
+            self.dir = input_dir
+            return
+        if self.dir_queue == input_dir:
+            return
+        self.dir_queue = input_dir
+
+    def change_dir(self, possible: list[Directions]) -> bool:
+        if self.dir_queue in possible:
+            self.dir = self.dir_queue
+            self.dir_queue = None
+            return True
+        elif self.dir in possible:
+            return True
+        else:
+            self.dir_queue = None
+            return False
 
     def move(self, movement: float) -> None:
         self.pos = CoordinatesFloat(
@@ -117,7 +143,7 @@ class MazeObj:
 
     maze: list[list[Cell]]
 
-    def __init__(self, maze_int: list[list[int]]):
+    def __init__(self, maze_int: list[list[int]]) -> None:
         self.maze_int = maze_int
         self.size = Coordinates(len(maze_int[0]), len(maze_int))
 
@@ -146,7 +172,7 @@ class Maze:
     maze: MazeObj
     current_map: int
 
-    def __init__(self, args: PMArgs):
+    def __init__(self, args: PMArgs) -> None:
 
         self.args = args
         self.current_map = -1
@@ -169,7 +195,31 @@ class Maze:
 
         self.setup_map()
 
-    def setup_map(self):
+    def get_wall_less(self) -> None:
+        for row in self.maze.maze:
+            for cell in row:
+                cell.walls = Walls(False, False, False, False)
+                cell.state = CellState.FORK
+
+        for cell in self.maze.maze[0]:
+            cell.walls = Walls(True, False, False, False)
+            cell.state = CellState.CORRIDOR
+
+        for cell in self.maze.maze[-1]:
+            cell.walls = Walls(True, False, False, False)
+            cell.state = CellState.CORRIDOR
+
+        for line in self.maze.maze:
+            for cell in line:
+                cell.walls = Walls(True, False, False, False)
+                cell.state = CellState.CORRIDOR
+
+        self.maze.maze[0][0].walls = Walls(True, False, False, True)
+        self.maze.maze[0][-1].walls = Walls(True, True, False, False)
+        self.maze.maze[-1][0].walls = Walls(False, False, True, True)
+        self.maze.maze[-1][-1].walls = Walls(False, True, True, False)
+
+    def setup_map(self) -> None:
 
         self.ghosts = [
             Ghost((255, 0, 0), Coordinates(0, 0), Directions.RIGHT),
@@ -201,7 +251,8 @@ class Maze:
                 continue
             else:
                 self.player = Player(
-                    Coordinates(player_position[0], player_position[1]))
+                    Coordinates(player_position[0], player_position[1]),
+                    self.args.lives)
                 break
 
         n_pacgums: int = self.args.pacgum
@@ -211,13 +262,15 @@ class Maze:
         while n_pacgums:
             attempt = Coordinates(random.randint(0, self.maze.size[0] - 1),
                                   random.randint(0, self.maze.size[1] - 1))
-            print(attempt)
+            # print(attempt)
             if ((attempt.x == 0 or attempt.x == self.maze.size[0] - 1) and
                     (attempt.y == 0 or attempt.y == self.maze.size[1] - 1)):
                 continue
             if self.maze.maze[attempt.y][attempt.x].state == CellState.BLOCKED:
                 continue
-            if attempt in self.pacgum or self.player.pos == attempt:
+            if (attempt in self.pacgum or
+                Coordinates(int(self.player.pos.x),
+                            int(self.player.pos.y)) == attempt):
                 continue
             self.pacgum.append(attempt)
             n_pacgums -= 1

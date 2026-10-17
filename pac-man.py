@@ -6,7 +6,8 @@ def main() -> int:
     try:
         args = input_args()
         game = PacMan(args)
-        game.run()
+        game.run_program()
+        game.save_highscore()
     except (FileNotFoundError, json.JSONDecodeError):
         return 1
     return 0

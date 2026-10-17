@@ -1,9 +1,8 @@
 SRC = src/
 OBJ = $(SRC)*.py
+MAIN = pac-man.py
 
 VENV = .venv/
-
-NO_PG_MSG = PYGAME_HIDE_SUPPORT_PROMPT=1
 
 PYTHON = python3
 DEBUGGER = $(PYTHON) pdb
@@ -22,10 +21,10 @@ $(VENV):
 	@$(PYTHON) -m venv $(VENV)
 
 run:
-	@$(NO_PG_MSG) $(PYTHON) $(SRC) config_file.json
+	$(PYTHON) $(MAIN) config_file.json
 
 debug:
-	@$(NO_PG_MSG) $(DEBUGGER) $(MAIN).py config_file.json
+	$(DEBUGGER) $(MAIN) config_file.json
 
 clean:
 	@$(RM) ./__pycache__/ ./.mypy_cache/
@@ -35,15 +34,15 @@ fclean: clean
 	@$(RM) ./$(VENV)
 
 lint:
-	@$(PYTHON) flake8 $(OBJ) || true
-	@$(PYTHON) mypy --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs $(OBJ) || true
+	@$(PYTHON) -m flake8 $(OBJ) $(MAIN) || true
+	@$(PYTHON) -m mypy $(OBJ) $(MAIN) --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs $(OBJ) || true
 
 lint-strict:
-	@$(PYTHON) flake8 $(OBJ) || true
-	@$(PYTHON) mypy --strict $(OBJ) || true
+	@$(PYTHON) -m flake8 $(OBJ) $(MAIN) || true
+	@$(PYTHON) -m mypy --strict $(OBJ) $(MAIN) || true
 
 %:
 	@:
 
 run_dan:
-	@$(NO_PG_MSG) $(PYTHON) dan_test.py config_file.json
+	$(PYTHON) dan_test.py config_file.json

@@ -4,6 +4,7 @@ from typing import Any
 from pathlib import Path
 from pydantic import BaseModel, Field
 from src import Coordinates
+from dotenv import load_dotenv
 
 
 class PMArgs(BaseModel):
@@ -44,5 +45,7 @@ def input_args() -> PMArgs:
     if len(sys.argv) != 2:
         print("Usage: python pac-man.py <config_file>")
         sys.exit(1)
+
+    load_dotenv()
 
     return PMArgs(**get_from_json_file(sys.argv[1]))

@@ -1,0 +1,5 @@
+pygame
+pydantic
+dotenv
+flake8
+mypy
