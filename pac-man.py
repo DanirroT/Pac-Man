@@ -14,4 +14,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nProgram was forcefully stopped by the user.")
+        exit(0)

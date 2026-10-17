@@ -1,5 +1,10 @@
 from enum import Enum
 from typing import NamedTuple
+# from abc import ABC, abstractmethod
+
+
+class CloseProgram(Exception):
+    pass
 
 
 class Coordinates(NamedTuple):
@@ -18,6 +23,13 @@ class CoordinatesFloat(NamedTuple):
         return f"x: {self.x}, y: {self.y}"
 
 
+class Overlays(Enum):
+    PAUSE = "p"
+    WIN = "w"
+    LOSE = "l"
+    STARTING = "s"
+
+
 class Directions(Enum):
     UP = "u"
     RIGHT = "r"
@@ -30,14 +42,7 @@ class Screens(Enum):
     GAME = 2
     WIN = 3
     LOSE = 4
-
-
-class CloseProgram(Exception):
-    pass
-
-
-# class MapColors(Enum):
-#     WALL = (0, 0, 0)
+    SCORING = 5
 
 
 class SqPOI(Enum):
@@ -52,3 +57,18 @@ class SqPOI(Enum):
     TL = "tl"
 
     C = "c"
+
+
+# class MazeElement(ABC):
+#     """
+#     Abstract class for all objects that can be drawn on the maze.
+#     """
+
+#     pos: Coordinates | CoordinatesFloat
+
+#     def __init__(self, pos: CoordinatesFloat) -> None:
+#         self.pos = pos
+
+#     @abstractmethod
+#     def draw(self) -> None:
+#         pass

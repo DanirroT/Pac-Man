@@ -1,9 +1,11 @@
 from __future__ import annotations
-from src import Coordinates, CoordinatesFloat, Screens, Maze, CellState, SqPOI
+from src import (Screens, CellState, Overlays, SqPOI,
+                 Coordinates, CoordinatesFloat,
+                 Maze, MazeObj)
 from typing import TYPE_CHECKING
 import pygame
 
-# from enum import Enum
+
 if TYPE_CHECKING:
     # from pygame.rect import Rect
     from pygame.surface import Surface
@@ -24,7 +26,11 @@ class WindowedVisualizer():
     win_static: Surface
     lose_static: Surface
 
-    maze: Maze
+    starting_overlay: Surface
+    pause_overlay: Surface
+
+    maze_manager: Maze
+    maze_obj: MazeObj
     maze_background: Surface
     middle_map: CoordinatesFloat
 
@@ -40,6 +46,8 @@ class WindowedVisualizer():
         pygame.font.init()
         pygame.display.set_caption("Pac-Man")
         self.build_menus()
+
+        self.clock = pygame.time.Clock()
 
         pacman_png = pygame.image.load("images/pacman.png").convert_alpha()
 
@@ -143,7 +151,8 @@ class WindowedVisualizer():
         win_title = self.title_1_font.render("Congratulations!",
                                              True, (0, 255, 255))
         self.win_static.blit(win_title, win_title.get_rect(
-            center=(self.dimensions.x // 2, self.dimensions.y // 2 + 200)))
+            center=(self.dimensions.x // 2,
+                    self.dimensions.y // 2 - self.text_size * 5)))
 
         win_score = self.title_2_font.render("Your Score", True, (0, 255, 255))
         self.win_static.blit(win_score, win_score.get_rect(
@@ -154,30 +163,42 @@ class WindowedVisualizer():
 
         lose_title = self.title_1_font.render("Game Over", True, (0, 0, 255))
         self.lose_static.blit(lose_title, lose_title.get_rect(
-            center=(self.dimensions.x // 2, self.dimensions.y // 2 + 200)))
+            center=(self.dimensions.x // 2,
+                    self.dimensions.y // 2 - self.text_size * 5)))
 
         lose_score = self.title_2_font.render("Your Score", True, (0, 0, 255))
         self.lose_static.blit(lose_score, lose_score.get_rect(
             center=(self.dimensions.x // 2, self.dimensions.y // 2)))
 
-    def show_start(self, high_scores: list[tuple[str, int]] = []) -> None:
-        if not len(self.highscore) and len(high_scores):
-            self.highscore = high_scores[:10]
-        self.screen.blit(self.start_static, (0, 0))
+        self.pause_overlay = pygame.Surface(self.dimensions)
+        self.pause_overlay.set_alpha(128)
+        self.pause_overlay.fill((0, 0, 0))
+        pause_text = self.title_1_font.render("Paused", True, (255, 255, 255))
+        self.pause_overlay.blit(pause_text, pause_text.get_rect(
+            center=(self.dimensions.x // 2, self.dimensions.y // 2)))
 
-        for i, (name, score) in enumerate(self.highscore):
-            # print(f"{i + 1}. {name}: {score}")
-            text = self.r_text_font.render(f"{i + 1}. {name}: {score}",
-                                           True, (255, 255, 255))
-            self.screen.blit(text, text.get_rect(
-                center=(self.dimensions.x // 2,
-                        self.margins.y + self.text_size * (5 + i))))
+        self.starting_overlay = pygame.Surface(self.dimensions)
+        self.starting_overlay.set_alpha(128)
+        self.starting_overlay.fill((0, 0, 0))
+        pause_text = self.title_1_font.render(
+            "Press any key to start", True, (255, 255, 255))
+        self.starting_overlay.blit(pause_text, pause_text.get_rect(
+            center=(self.dimensions.x // 2, self.dimensions.y // 2)))
 
-        pygame.display.update()
+        self.scoring_static = pygame.Surface(self.dimensions)
+        self.scoring_static.fill((0, 0, 0))
+        enquiry = self.title_2_font.render(
+            "Register Score?", True, (255, 255, 255))
+        self.scoring_static.blit(enquiry, enquiry.get_rect(
+            center=(self.dimensions.x // 2,
+                    self.dimensions.y // 2 - self.text_size * 3)))
+        instructions = self.r_text_font.render(
+            "Write your name and press Enter. Press Esc to skip.",
+            True, (255, 255, 255))
+        self.scoring_static.blit(instructions, instructions.get_rect(
+            center=(self.dimensions.x // 2, self.dimensions.y // 2)))
 
-    def build_map(self, maze_manager: Maze) -> None:
-        self.maze_manager = maze_manager
-        self.maze_obj = self.maze_manager.maze
+    def build_map(self) -> None:
         # self.maze_size = Coordinates(len(map_obj[0]), len(map_obj))
         self.maze_background = pygame.Surface(self.dimensions)
 
@@ -198,17 +219,17 @@ class WindowedVisualizer():
 
         self.s_obj_size = round(self.cell_size / 6)
         self.l_obj_size = round(self.s_obj_size * 2)
-
-        # print("cell_size:", self.cell_size)
-        # print("s_obj_size:", self.s_obj_size)
-        # print("l_obj_size:", self.l_obj_size)
-        # print("middle_map:", self.middle_map)
-
         self.text_size = 20
 
         self.text_margin = int(self.text_size * 0.75)
 
         self.font = pygame.font.SysFont('freesanbold.ttf', self.text_size)
+
+        """
+        # print("cell_size:", self.cell_size)
+        # print("s_obj_size:", self.s_obj_size)
+        # print("l_obj_size:", self.l_obj_size)
+        # print("middle_map:", self.middle_map)
 
         # pygame.draw.circle(self.maze_background, (0, 255, 255),
         #                    (self.dimensions.x // 2, self.dimensions.y // 2),
@@ -233,6 +254,7 @@ class WindowedVisualizer():
         # pygame.draw.circle(self.maze_background, (255, 255, 0),
         #                    self.get_sq_poi(self.middle_map, SqPOI.BR),
         #                    10)
+        """
 
         """
 
@@ -260,6 +282,7 @@ class WindowedVisualizer():
                          (middle_display.x, self.dimensions.y),
                          (middle_display.x, 0), 5)
         """
+
         for line in self.maze_obj.maze:
             for cell in line:
                 # print("top  " if cell.walls.up else "     ", end="")
@@ -314,42 +337,96 @@ class WindowedVisualizer():
                                self.get_sq_poi(ghost.pos), self.l_obj_size)
         pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
             self.maze_manager.player.pos), self.l_obj_size)
-        pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
-            Coordinates(self.maze_manager.maze.size.x // 2,
-                        self.maze_manager.maze.size.y // 2)), self.s_obj_size)
+        # pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
+        #     Coordinates(self.maze_manager.maze.size.x // 2,
+        #                 self.maze_manager.maze.size.y // 2)),
+        #                 self.s_obj_size)
 
-    def resize(self, w: int, h: int, current_screen: Screens) -> None:
+    def update_display(self, current_screen: Screens,
+                       dimensions: Coordinates | bool = False,
+                       player_name: str = ""
+                       ) -> None:
 
-        self.dimensions = Coordinates(w, h)
+        if len(player_name):
+            print(f"Player Name: {player_name}")
 
-        # print("resize to:", w, h)
-        if current_screen == Screens.START:
-            self.build_menus()
-            self.show_start()
+        if dimensions and isinstance(dimensions, Coordinates):
+            self.dimensions = dimensions
+            # print("resize to:", w, h)
+
         elif current_screen == Screens.GAME:
-            self.build_map(self.maze_manager)
-            # self.update_display(turn)
+            if dimensions:
+                self.build_map()
+            self.screen.blit(self.maze_background, (0, 0))
+            self.put_map_obj()
+
+        if dimensions:
+            self.build_menus()
+
+        if current_screen == Screens.START:
+            self.show_start()
+
+        elif current_screen == Screens.LOSE:
+            self.show_end(self.maze_manager.score, Overlays.LOSE)
+
+        elif current_screen == Screens.WIN:
+            self.show_end(self.maze_manager.score, Overlays.WIN)
+
+        elif current_screen == Screens.SCORING:
+            self.show_scoring(player_name)
+
         pygame.display.update()
 
-    def update_display(self) -> None:
+    def overlay(self, overlay: Overlays) -> None:
+        if overlay == Overlays.PAUSE:
+            self.screen.blit(self.pause_overlay, (0, 0))
+        elif overlay == Overlays.LOSE:
+            self.screen.blit(self.lose_static, (0, 0))
+        elif overlay == Overlays.WIN:
+            self.screen.blit(self.win_static, (0, 0))
+        elif overlay == Overlays.STARTING:  # pyright: ignore
+            self.screen.blit(self.starting_overlay, (0, 0))
+        pygame.display.update()
 
-        self.screen.blit(self.maze_background, (0, 0))
+    def show_start(self, high_scores: list[tuple[str, int]] = []) -> None:
+        if not len(self.highscore) and len(high_scores):
+            self.highscore = high_scores[:10]
+        self.screen.blit(self.start_static, (0, 0))
 
-        self.put_map_obj()
+        for i, (name, score) in enumerate(self.highscore):
+            # print(f"{i + 1}. {name}: {score}")
+            text = self.r_text_font.render(f"{i + 1}. {name}: {score}",
+                                           True, (255, 255, 255))
+            self.screen.blit(text, text.get_rect(
+                center=(self.dimensions.x // 2,
+                        self.margins.y + self.text_size * (5 + i))))
+
+        pygame.display.update()
+
+    def show_scoring(self, player_name: str) -> None:
+        self.screen.blit(self.scoring_static, (0, 0))
+
+        text = self.title_2_font.render(player_name,
+                                        True, (255, 255, 255))
+        self.screen.blit(text, text.get_rect(
+            center=(self.dimensions.x // 2,
+                    self.dimensions.y // 2 + self.text_size * 3)))
+
+        pygame.display.update()
+
+    def show_end(self, score: int, screen: Overlays) -> None:
+        if screen == Overlays.WIN:
+            self.screen.blit(self.win_static, (0, 0))
+        elif screen == Overlays.LOSE:
+            self.screen.blit(self.lose_static, (0, 0))
+
+        text = self.title_2_font.render(f"Final Score: {score}",
+                                        True, (255, 255, 255))
+        self.screen.blit(text, text.get_rect(
+            center=(self.dimensions.x // 2,
+                    self.dimensions.y // 2 + self.text_size * 3)))
 
         pygame.display.update()
 
     def terminate(self) -> None:
         pygame.quit()
-
-    def pause(self) -> None:
-        pause_overlay = pygame.Surface(self.dimensions)
-        pause_overlay.set_alpha(128)
-        pause_overlay.fill((0, 0, 0))
-        self.screen.blit(pause_overlay, (0, 0))
-
-        pause_text = self.title_1_font.render("Paused", True, (255, 255, 255))
-        self.screen.blit(pause_text, pause_text.get_rect(
-            center=(self.dimensions.x // 2, self.dimensions.y // 2)))
-
-        pygame.display.update()

@@ -9,21 +9,27 @@ import random
 class Player():
 
     pos: CoordinatesFloat
+    starting_pos: Coordinates
     dir: Directions
     lives: int
 
+    supergum_power: bool = False
     invincibility: bool = False
     wall_phase: bool = False
     extra_speed: bool = False
 
+    map_dimensions: Coordinates
     dir_queue: Directions | None = None
 
     def __init__(self, pos: Coordinates, lives: int,
+                 map_dimensions: Coordinates,
                  dir: Directions = Directions.RIGHT
                  ) -> None:
         self.pos = CoordinatesFloat(*pos)
+        self.starting_pos = pos
         self.dir = dir
         self.lives = lives
+        self.map_dimensions = map_dimensions
 
     def handle_input(self, input_dir: Directions) -> None:
         if (self.dir == Directions.UP and input_dir == Directions.DOWN or
@@ -58,20 +64,42 @@ class Player():
             self.pos.y + (movement if "d" in self.dir.value else 0)
             - (movement if "u" in self.dir.value else 0)
         )
+        if self.pos.x < 0:
+            self.pos = CoordinatesFloat(0, self.pos.y)
+        if self.pos.y < 0:
+            self.pos = CoordinatesFloat(self.pos.x, 0)
+        if self.pos.x >= self.map_dimensions.x:
+            self.pos = CoordinatesFloat(self.map_dimensions.x - 1, self.pos.y)
+        if self.pos.y >= self.map_dimensions.y:
+            self.pos = CoordinatesFloat(self.pos.x, self.map_dimensions.y - 1)
+
+    def reset(self) -> None:
+        self.pos = CoordinatesFloat(*self.starting_pos)
+        self.dir = Directions.RIGHT
+        self.supergum_power = False
+        self.invincibility = False
+        self.wall_phase = False
+        self.extra_speed = False
 
 
 class Ghost():
 
     pos: CoordinatesFloat
+    starting_pos: Coordinates
     dir: Directions
     color: tuple[int, int, int]
     # ai: DecisionAlgorithm
+    map_dimensions: Coordinates
+    target: Coordinates | None = None
 
     def __init__(self, color: tuple[int, int, int], pos: Coordinates,
+                 map_dimensions: Coordinates,
                  dir: Directions = Directions.RIGHT) -> None:
         self.pos = CoordinatesFloat(*pos)
+        self.starting_pos = pos
         self.dir = dir
         self.color = color
+        self.map_dimensions = map_dimensions
 
     def change_dir(self, dir: Directions) -> None:
         self.dir = dir
@@ -83,7 +111,55 @@ class Ghost():
             self.pos.y + (movement if "d" in self.dir.value else 0)
             - (movement if "u" in self.dir.value else 0)
         )
+        if self.pos.x < 0:
+            self.pos = CoordinatesFloat(0, self.pos.y)
+        if self.pos.y < 0:
+            self.pos = CoordinatesFloat(self.pos.x, 0)
+        if self.pos.x >= self.map_dimensions.x:
+            self.pos = CoordinatesFloat(self.map_dimensions.x - 1, self.pos.y)
+        if self.pos.y >= self.map_dimensions.y:
+            self.pos = CoordinatesFloat(self.pos.x, self.map_dimensions.y - 1)
 
+    def die(self) -> None:
+        self.target = self.starting_pos
+
+    # def draw(self) -> None:
+    #     pass
+
+
+# class PacGum(MazeElement):
+
+#     pos: Coordinates
+#     color: tuple[int, int, int] = (255, 184, 174)
+
+#     def __init__(self, pos: Coordinates) -> None:
+#         self.pos = pos  # pyright: ignore
+
+#     def draw(self, screen: pygame.Surface) -> None:
+#         pygame.draw.circle(screen, self.color,
+#                             self.get_sq_poi(self.pos), self.s_obj_size)
+
+
+# class SuperGum(MazeElement):
+
+#     pos: Coordinates
+#     color: tuple[int, int, int] = (255, 184, 174)
+
+#     def __init__(self, pos: Coordinates) -> None:
+#         self.pos = pos  # pyright: ignore
+
+#     def draw(self, screen: pygame.Surface) -> None:
+#         pygame.draw.circle(screen, self.color,
+#                            self.get_sq_poi(self.pos), self.l_obj_size)
+
+#         for gum in self.maze_manager.pacgum:
+#         for supergum in self.maze_manager.supergum:
+
+#         for ghost in self.maze_manager.ghosts:
+#             pygame.draw.circle(self.screen, ghost.color,
+#                                self.get_sq_poi(ghost.pos), self.l_obj_size)
+#         pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
+#             self.maze_manager.player.pos), self.l_obj_size)
 
 class CellState(Enum):
 
@@ -163,6 +239,7 @@ class Maze:
     args: PMArgs
 
     player: Player
+    score: int
 
     ghosts: list[Ghost]
 
@@ -176,6 +253,7 @@ class Maze:
 
         self.args = args
         self.current_map = -1
+        self.score = 0
 
     def load_pre_set(self) -> None:
 
@@ -185,6 +263,14 @@ class Maze:
         self.setup_map()
 
     def load_next_map(self) -> None:
+
+        if (not len(self.args.levels)):
+            if self.current_map:
+                self.load_pre_set()
+                self.current_map += 1
+                return
+            else:
+                raise IndexError("No more maps available.")
 
         self.current_map += 1
 
@@ -201,43 +287,52 @@ class Maze:
                 cell.walls = Walls(False, False, False, False)
                 cell.state = CellState.FORK
 
-        for cell in self.maze.maze[0]:
+        for cell in self.maze.maze[0][1:-1]:
             cell.walls = Walls(True, False, False, False)
             cell.state = CellState.CORRIDOR
 
-        for cell in self.maze.maze[-1]:
-            cell.walls = Walls(True, False, False, False)
+        for cell in self.maze.maze[-1][1:-1]:
+            cell.walls = Walls(False, False, True, False)
             cell.state = CellState.CORRIDOR
 
-        for line in self.maze.maze:
-            for cell in line:
-                cell.walls = Walls(True, False, False, False)
-                cell.state = CellState.CORRIDOR
+        for line in self.maze.maze[1:-1]:
+            line[0].walls = Walls(False, False, False, True)
+            line[0].state = CellState.CORRIDOR
+
+            line[-1].walls = Walls(False, True, False, False)
+            line[-1].state = CellState.CORRIDOR
 
         self.maze.maze[0][0].walls = Walls(True, False, False, True)
+        self.maze.maze[0][0].state = CellState.CORNER
         self.maze.maze[0][-1].walls = Walls(True, True, False, False)
+        self.maze.maze[0][-1].state = CellState.CORNER
         self.maze.maze[-1][0].walls = Walls(False, False, True, True)
+        self.maze.maze[-1][0].state = CellState.CORNER
         self.maze.maze[-1][-1].walls = Walls(False, True, True, False)
+        self.maze.maze[-1][-1].state = CellState.CORNER
 
     def setup_map(self) -> None:
+        map_dimensions = self.maze.size
 
         self.ghosts = [
-            Ghost((255, 0, 0), Coordinates(0, 0), Directions.RIGHT),
-            Ghost((255, 184, 255), Coordinates(0, self.maze.size.y-1),
-                  Directions.DOWN),
-            Ghost((0, 255, 255), Coordinates(self.maze.size.x-1, 0),
-                  Directions.LEFT),
+            Ghost((255, 0, 0), Coordinates(0, 0),
+                  map_dimensions, Directions.RIGHT),
+            Ghost((255, 184, 255), Coordinates(0, map_dimensions.y-1),
+                  map_dimensions, Directions.DOWN),
+            Ghost((0, 255, 255), Coordinates(map_dimensions.x-1, 0),
+                  map_dimensions, Directions.LEFT),
             Ghost((255, 184, 81), Coordinates(
-                self.maze.size.x-1, self.maze.size.y-1), Directions.UP)
+                map_dimensions.x-1, map_dimensions.y-1),
+                map_dimensions, Directions.UP)
         ]
 
         self.supergum = [
-            Coordinates(0, 0), Coordinates(self.maze.size.x-1, 0),
-            Coordinates(0, self.maze.size.y-1),
-            Coordinates(self.maze.size.x-1, self.maze.size.y-1)
+            Coordinates(0, 0), Coordinates(map_dimensions.x-1, 0),
+            Coordinates(0, map_dimensions.y-1),
+            Coordinates(map_dimensions.x-1, map_dimensions.y-1)
         ]
 
-        player_original = (self.maze.size.x // 2, self.maze.size.y // 2)
+        player_original = (map_dimensions.x // 2, map_dimensions.y // 2)
         player_position = player_original
         change_list = [(1, 0), (0, 1), (-1, 0), (0, -1),
                        (1, 1), (-1, 1), (-1, -1), (1, -1)]
@@ -252,19 +347,21 @@ class Maze:
             else:
                 self.player = Player(
                     Coordinates(player_position[0], player_position[1]),
-                    self.args.lives)
+                    self.args.lives, map_dimensions)
                 break
 
         n_pacgums: int = self.args.pacgum
         self.pacgum = []
         random.seed(self.args.seed)
+        n_pacgums = max(2, min(
+            n_pacgums, (map_dimensions.x * map_dimensions.y) - 25))
 
         while n_pacgums:
-            attempt = Coordinates(random.randint(0, self.maze.size[0] - 1),
-                                  random.randint(0, self.maze.size[1] - 1))
+            attempt = Coordinates(random.randint(0, map_dimensions[0] - 1),
+                                  random.randint(0, map_dimensions[1] - 1))
             # print(attempt)
-            if ((attempt.x == 0 or attempt.x == self.maze.size[0] - 1) and
-                    (attempt.y == 0 or attempt.y == self.maze.size[1] - 1)):
+            if ((attempt.x == 0 or attempt.x == map_dimensions[0] - 1) and
+                    (attempt.y == 0 or attempt.y == map_dimensions[1] - 1)):
                 continue
             if self.maze.maze[attempt.y][attempt.x].state == CellState.BLOCKED:
                 continue

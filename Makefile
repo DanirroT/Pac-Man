@@ -21,9 +21,11 @@ $(VENV):
 	@$(PYTHON) -m venv $(VENV)
 
 run:
+	@export PYGAME_HIDE_SUPPORT_PROMPT=1
 	$(PYTHON) $(MAIN) config_file.json
 
 debug:
+	@export PYGAME_HIDE_SUPPORT_PROMPT=1
 	$(DEBUGGER) $(MAIN) config_file.json
 
 clean:

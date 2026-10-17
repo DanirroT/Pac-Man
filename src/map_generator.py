@@ -46,29 +46,41 @@ class MazeGenerator:
 
     def use_preset_maze(self) -> list[list[int]]:
 
+        # self.configs = MazeConfigs(
+        #     width=20,
+        #     height=15,
+        #     entry=Coordinates(0, 0),
+        #     exit=Coordinates(19, 14),
+        #     perfect=True,
+        #     seed=42
+        # )
+
+        # return [[int(c, 16) for c in line] for line in (
+        #     "B9555395555395515553\n"
+        #     "C6D396E9553C693E953A\n"
+        #     "9552C53853C556C3AD42\n"
+        #     "AD54396ABC397956853A\n"
+        #     "A9396C3C07AC5453C7AA\n"
+        #     "86AC17AFAFAFFFBC556A\n"
+        #     "ABAD696FEF857F851396\n"
+        #     "AAC556BFFFAFFF87AAC3\n"
+        #     "C4393943BFAFD5296E96\n"
+        #     "956AC6BAAFAFFFAC556B\n"
+        #     "C5569786856953A95152\n"
+        #     "D3954569453AD6AE96BA\n"
+        #     "92A95396956855696946\n"
+        #     "AEC696E9697C3956BAD3\n"
+        #     "C5554556D45546D54456").splitlines()]
+
         self.configs = MazeConfigs(
-            width=20,
-            height=15,
+            width=3,
+            height=3,
             entry=Coordinates(0, 0),
-            exit=Coordinates(19, 14),
+            exit=Coordinates(2, 2),
             perfect=True,
             seed=42
         )
 
-        maze_lines = ("B9555395555395515553\n"
-                      "C6D396E9553C693E953A\n"
-                      "9552C53853C556C3AD42\n"
-                      "AD54396ABC397956853A\n"
-                      "A9396C3C07AC5453C7AA\n"
-                      "86AC17AFAFAFFFBC556A\n"
-                      "ABAD696FEF857F851396\n"
-                      "AAC556BFFFAFFF87AAC3\n"
-                      "C4393943BFAFD5296E96\n"
-                      "956AC6BAAFAFFFAC556B\n"
-                      "C5569786856953A95152\n"
-                      "D3954569453AD6AE96BA\n"
-                      "92A95396956855696946\n"
-                      "AEC696E9697C3956BAD3\n"
-                      "C5554556D45546D54456").splitlines()
-
-        return [[int(c, 16) for c in line] for line in maze_lines]
+        return [[11, 13, 3],
+                [10, 8, 2],
+                [12, 6, 14]]
