@@ -36,6 +36,8 @@ class Directions(Enum):
     DOWN = "d"
     LEFT = "l"
 
+    NA = "na"
+
 
 class Screens(Enum):
     START = 1

@@ -6,6 +6,79 @@ from enum import Enum
 import random
 
 
+class CellState(Enum):
+
+    FORK = 1
+    DEADEND = 3
+    BLOCKED = 4
+
+    CORRIDOR = 2
+    CORNER = 5
+
+
+class Walls(NamedTuple):
+    up: bool
+    right: bool
+    down: bool
+    left: bool
+
+
+class Cell:
+    loc: Coordinates
+    y: int
+    walls: Walls
+    # starting_objects: list[StartingObjects]
+    state: CellState
+
+    def __init__(self, loc: Coordinates, value: int):
+        self.loc = loc
+        self.walls = Walls(
+            bool(value & 1),  # left wall
+            bool(value & 2),  # bottom wall
+            bool(value & 4),  # right wall
+            bool(value & 8),  # top wall
+        )
+        wall_count = sum(self.walls)
+
+        if wall_count == 4:
+            self.state = CellState.BLOCKED
+        elif wall_count == 3:
+            self.state = CellState.DEADEND
+
+        elif wall_count == 2:
+            if ((self.walls.up and self.walls.down) or
+                    (self.walls.left and self.walls.right)):
+                self.state = CellState.CORRIDOR
+            else:
+                self.state = CellState.CORNER
+        else:
+            self.state = CellState.FORK
+
+        # self.starting_objects = []
+
+
+class MazeObj:
+
+    maze_int: list[list[int]]
+    size: Coordinates
+
+    maze: list[list[Cell]]
+
+    def __init__(self, maze_int: list[list[int]]) -> None:
+        self.maze_int = maze_int
+        self.size = Coordinates(len(maze_int[0]), len(maze_int))
+
+        self.maze = []
+        for y, row in enumerate(maze_int):
+            self.maze.append([])
+            for x, value in enumerate(row):
+                self.maze[y].append(Cell(Coordinates(x, y), value))
+
+    def __str__(self) -> str:
+        return "\n".join("".join(str(cell.state.value) for cell in row)
+                         for row in self.maze)
+
+
 class Player():
 
     pos: CoordinatesFloat
@@ -46,7 +119,15 @@ class Player():
             return
         self.dir_queue = input_dir
 
-    def change_dir(self, possible: list[Directions]) -> bool:
+    def change_dir(self, cell: Cell) -> bool:
+
+        possible = [
+            Directions.UP if cell.walls.up else Directions.NA,
+            Directions.DOWN if cell.walls.down else Directions.NA,
+            Directions.LEFT if cell.walls.left else Directions.NA,
+            Directions.RIGHT if cell.walls.right else Directions.NA
+        ]
+
         if self.dir_queue in possible:
             self.dir = self.dir_queue
             self.dir_queue = None
@@ -68,9 +149,9 @@ class Player():
             self.pos = CoordinatesFloat(0, self.pos.y)
         if self.pos.y < 0:
             self.pos = CoordinatesFloat(self.pos.x, 0)
-        if self.pos.x >= self.map_dimensions.x:
+        if self.pos.x >= self.map_dimensions.x - 1:
             self.pos = CoordinatesFloat(self.map_dimensions.x - 1, self.pos.y)
-        if self.pos.y >= self.map_dimensions.y:
+        if self.pos.y >= self.map_dimensions.y - 1:
             self.pos = CoordinatesFloat(self.pos.x, self.map_dimensions.y - 1)
 
     def reset(self) -> None:
@@ -160,78 +241,6 @@ class Ghost():
 #                                self.get_sq_poi(ghost.pos), self.l_obj_size)
 #         pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
 #             self.maze_manager.player.pos), self.l_obj_size)
-
-class CellState(Enum):
-
-    FORK = 1
-    DEADEND = 3
-    BLOCKED = 4
-
-    CORRIDOR = 2
-    CORNER = 5
-
-
-class Walls(NamedTuple):
-    up: bool
-    right: bool
-    down: bool
-    left: bool
-
-
-class Cell:
-    loc: Coordinates
-    y: int
-    walls: Walls
-    # starting_objects: list[StartingObjects]
-    state: CellState
-
-    def __init__(self, loc: Coordinates, value: int):
-        self.loc = loc
-        self.walls = Walls(
-            bool(value & 1),  # left wall
-            bool(value & 2),  # bottom wall
-            bool(value & 4),  # right wall
-            bool(value & 8),  # top wall
-        )
-        wall_count = sum(self.walls)
-
-        if wall_count == 4:
-            self.state = CellState.BLOCKED
-        elif wall_count == 3:
-            self.state = CellState.DEADEND
-
-        elif wall_count == 2:
-            if ((self.walls.up and self.walls.down) or
-                    (self.walls.left and self.walls.right)):
-                self.state = CellState.CORRIDOR
-            else:
-                self.state = CellState.CORNER
-        else:
-            self.state = CellState.FORK
-
-        # self.starting_objects = []
-
-
-class MazeObj:
-
-    maze_int: list[list[int]]
-    size: Coordinates
-
-    maze: list[list[Cell]]
-
-    def __init__(self, maze_int: list[list[int]]) -> None:
-        self.maze_int = maze_int
-        self.size = Coordinates(len(maze_int[0]), len(maze_int))
-
-        self.maze = []
-        for y, row in enumerate(maze_int):
-            self.maze.append([])
-            for x, value in enumerate(row):
-                self.maze[y].append(Cell(Coordinates(x, y), value))
-
-    def __str__(self) -> str:
-        return "\n".join("".join(str(cell.state.value) for cell in row)
-                         for row in self.maze)
 
 
 class Maze:

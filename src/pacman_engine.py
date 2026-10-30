@@ -1,6 +1,6 @@
 from __future__ import annotations
 from src import (Overlays, Screens, Directions,
-                 Coordinates, CoordinatesFloat,
+                 Coordinates,
                  PMArgs, CloseProgram,
                  WindowedVisualizer, Maze, get_from_json_file)
 from typing import TYPE_CHECKING
@@ -66,6 +66,7 @@ class PacMan:
         try:
             while True:
                 resize = False
+                frame_step = self.visualizer.clock.get_rawtime()
                 for event in pygame.event.get():
                     if event.type != pygame.MOUSEMOTION:
                         print(event)
@@ -103,6 +104,16 @@ class PacMan:
                         self.process_scoring_events(event)
                     else:
                         self.process_game_events(event)
+                if (self.current_screen == Screens.GAME and  # pyright: ignore
+                        not self.overlay and frame_step):
+                    print(self.maze.player.pos)
+                    if (self.maze.player.pos.x == int(self.maze.player.pos.x) and
+                            self.maze.player.pos.y == int(self.maze.player.pos.y)):
+                        self.maze.player.change_dir(
+                            self.maze.maze.maze[int(self.maze.player.pos.y)][int(self.maze.player.pos.x)])
+                    self.maze.player.move(1/12)
+                    self.detect_obj_collisions()
+                    self.visualizer.update_display(self.current_screen)
 
                 self.visualizer.clock.tick(30)
 
@@ -180,25 +191,25 @@ class PacMan:
 
             if (event.key == pygame.K_w or event.key == pygame.K_UP):
                 self.maze.player.handle_input(Directions.UP)
-                self.maze.player.pos = (
-                    CoordinatesFloat(self.maze.player.pos.x,
-                                     self.maze.player.pos.y - 1))
+                # self.maze.player.pos = (
+                #     CoordinatesFloat(self.maze.player.pos.x,
+                #                      self.maze.player.pos.y - 1))
             elif (event.key == pygame.K_d or event.key == pygame.K_RIGHT):
                 self.maze.player.handle_input(Directions.RIGHT)
-                self.maze.player.pos = (
-                    CoordinatesFloat(self.maze.player.pos.x + 1,
-                                     self.maze.player.pos.y))
+                # self.maze.player.pos = (
+                #     CoordinatesFloat(self.maze.player.pos.x + 1,
+                #                      self.maze.player.pos.y))
             elif (event.key == pygame.K_s or event.key == pygame.K_DOWN):
                 self.maze.player.handle_input(Directions.DOWN)
-                self.maze.player.pos = (
-                    CoordinatesFloat(self.maze.player.pos.x,
-                                     self.maze.player.pos.y + 1))
+                # self.maze.player.pos = (
+                #     CoordinatesFloat(self.maze.player.pos.x,
+                #                      self.maze.player.pos.y + 1))
             elif (event.key == pygame.K_a or event.key == pygame.K_LEFT):
                 self.maze.player.handle_input(Directions.LEFT)
-                self.maze.player.pos = (
-                    CoordinatesFloat(self.maze.player.pos.x - 1,
-                                     self.maze.player.pos.y))
-            self.detect_obj_collisions()
+                # self.maze.player.pos = (
+                #     CoordinatesFloat(self.maze.player.pos.x - 1,
+                #                      self.maze.player.pos.y))
+
             self.visualizer.update_display(self.current_screen)
 
     def next_game(self) -> None:
