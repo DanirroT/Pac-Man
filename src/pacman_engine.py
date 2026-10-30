@@ -28,7 +28,7 @@ class PacMan:
 
         self.visualizer = WindowedVisualizer()
 
-        # self.maze = Maze(self.args)
+        self.maze = Maze(self.args)
 
     def load_highscore(self) -> None:
         try:
@@ -55,9 +55,6 @@ class PacMan:
         # input()
         # terminal_clear()
 
-        self.maze = Maze(self.args)
-
-        self.turn = 0
         self.visualizer.show_start(self.highscore)
         self.current_screen = Screens.START
 
@@ -67,30 +64,34 @@ class PacMan:
             while True:
                 resize = False
                 for event in pygame.event.get():
-                    if event.type != pygame.MOUSEMOTION:
-                        print(event)
-                    else:
+                    if event.type == pygame.MOUSEMOTION:
                         continue
+                    else:
+                        print(event)
 
                     if (event.type == pygame.QUIT):
                         raise CloseProgram
                     elif event.type == pygame.KEYUP:
                         if event.key == pygame.K_LCTRL:
                             self.control = False
+                            continue
                     elif event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_LCTRL:
                             self.control = True
+                            continue
                         if (self.control and event.key == pygame.K_c):
                             raise KeyboardInterrupt
 
-                    elif ((event.type == pygame.VIDEORESIZE or
-                          event.type == pygame.WINDOWSIZECHANGED)
+                    elif ((event.type == pygame.VIDEORESIZE)
                           and not resize):
+                        # or event.type == pygame.WINDOWSIZECHANGED
+
                         # print("VIDEORESIZE", event.w, event.h)
                         # print()
                         self.visualizer.update_display(
                             self.current_screen, Coordinates(event.w, event.h))
                         resize = True
+                        continue
 
                     else:
                         continue
@@ -110,10 +111,11 @@ class PacMan:
             self.visualizer.terminate()
 
     def process_menu_events(self, event: Event) -> None:
-        if self.current_screen == Screens.START:
-            self.maze.current_map = -1
+
         if event.type == pygame.KEYDOWN:
             if (event.key == pygame.K_RETURN):
+                if self.current_screen == Screens.START:
+                    self.maze.current_map = -1
                 try:
                     self.next_game()
                 except IndexError:
@@ -121,7 +123,6 @@ class PacMan:
                     self.player_name = ""
                     self.visualizer.update_display(self.current_screen)
                     return
-                self.overlay = None
                 self.current_screen = Screens.GAME
             elif (event.key == pygame.K_ESCAPE and
                   self.current_screen == Screens.START):
