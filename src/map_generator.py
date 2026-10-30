@@ -1,6 +1,16 @@
 from src import Coordinates
 from pydantic import BaseModel, Field, field_validator
 
+import logging
+from mazegenerator import MazeGenerator as ExternalMazeGenerator
+logger = logging.getLogger(__name__)
+MIN_WIDTH, MIN_HEIGHT = 14, 10
+MAX_WIDTH, MAX_HEIGHT = 50, 40
+
+
+class MazeGenerationError(Exception):
+    """usable maze cannot be produced"""
+
 
 class MazeConfigs(BaseModel):
     width: int = Field(gt=0)
@@ -32,17 +42,27 @@ class MazeGenerator:
     configs: MazeConfigs
 
     def __init__(self, lvl_layout: Coordinates, seed: int | None = None):
+        size = self._clamp_size(lvl_layout)
         self.configs = MazeConfigs(
-            width=lvl_layout.x,
-            height=lvl_layout.y,
+            width=size.x, height=size.y,
             entry=Coordinates(0, 0),
-            exit=Coordinates(lvl_layout.x - 1, lvl_layout.y - 1),
-            perfect=True,
-            seed=seed
-        )
+            exit=Coordinates(size.x - 1, size.y - 1),
+            perfect=False,
+            seed=seed)
 
     def generate_maze(self) -> list[list[int]]:
-        return []
+        cfg = self.configs
+        try:
+            gen = ExternalMazeGenerator(
+                size=(cfg.width, cfg.height), perfect=cfg.perfect,
+                entry_cell=(cfg.entry.x, cfg.entry.y),
+                exit_cell=(cfg.exit.x, cfg.exit.y),
+                seed=cfg.seed or 0)
+            grid = gen.maze
+        except Exception as err:
+            raise MazeGenerationError(f"Maze generator failed: {err}") from err
+        self._validate(grid)
+        return grid
 
     def use_preset_maze(self) -> list[list[int]]:
 

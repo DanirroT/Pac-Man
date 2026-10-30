@@ -110,6 +110,7 @@ class Player():
             self.dir == Directions.LEFT and input_dir == Directions.RIGHT or
                 self.dir == Directions.RIGHT and input_dir == Directions.LEFT):
             self.dir = input_dir
+            self.dir_queue = None
             return
 
         if self.dir == input_dir:
@@ -139,12 +140,16 @@ class Player():
             return False
 
     def move(self, movement: float) -> None:
+        if self.extra_speed:
+            movement *= 2
+
         self.pos = CoordinatesFloat(
             self.pos.x + (movement if "r" in self.dir.value else 0)
             - (movement if "l" in self.dir.value else 0),
             self.pos.y + (movement if "d" in self.dir.value else 0)
             - (movement if "u" in self.dir.value else 0)
         )
+
         if self.pos.x < 0:
             self.pos = CoordinatesFloat(0, self.pos.y)
         if self.pos.y < 0:
