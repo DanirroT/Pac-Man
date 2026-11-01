@@ -23,11 +23,11 @@ class WindowedVisualizer():
 
     start_static: Surface
     highscore: list[tuple[str, int]]
-    win_static: Surface
-    lose_static: Surface
 
     starting_overlay: Surface
     pause_overlay: Surface
+    win_static: Surface
+    lose_static: Surface
 
     maze_manager: Maze
     maze_obj: MazeObj
@@ -366,11 +366,8 @@ class WindowedVisualizer():
         if current_screen == Screens.START:
             self.show_start()
 
-        elif current_screen == Screens.LOSE:
-            self.show_end(self.maze_manager.score, Overlays.LOSE)
-
-        elif current_screen == Screens.WIN:
-            self.show_end(self.maze_manager.score, Overlays.WIN)
+        elif current_screen in (Screens.LOSE, Screens.WIN):
+            self.show_end(self.maze_manager.score, current_screen)
 
         elif current_screen == Screens.SCORING:
             self.show_scoring(player_name)
@@ -380,10 +377,10 @@ class WindowedVisualizer():
     def overlay(self, overlay: Overlays) -> None:
         if overlay == Overlays.PAUSE:
             self.screen.blit(self.pause_overlay, (0, 0))
-        elif overlay == Overlays.LOSE:
-            self.screen.blit(self.lose_static, (0, 0))
-        elif overlay == Overlays.WIN:
-            self.screen.blit(self.win_static, (0, 0))
+        # elif overlay == Overlays.LOSE:
+        #     self.screen.blit(self.lose_static, (0, 0))
+        # elif overlay == Overlays.WIN:
+        #     self.screen.blit(self.win_static, (0, 0))
         elif overlay == Overlays.STARTING:  # pyright: ignore
             self.screen.blit(self.starting_overlay, (0, 0))
         pygame.display.update()
@@ -414,10 +411,10 @@ class WindowedVisualizer():
 
         pygame.display.update()
 
-    def show_end(self, score: int, screen: Overlays) -> None:
-        if screen == Overlays.WIN:
+    def show_end(self, score: int, screen: Screens) -> None:
+        if screen == Screens.WIN:
             self.screen.blit(self.win_static, (0, 0))
-        elif screen == Overlays.LOSE:
+        elif screen == Screens.LOSE:
             self.screen.blit(self.lose_static, (0, 0))
 
         text = self.title_2_font.render(f"Final Score: {score}",

@@ -107,16 +107,32 @@ class PacMan:
                         self.process_game_events(event)
                 if (self.current_screen == Screens.GAME and  # pyright: ignore
                         not self.overlay and frame_step):
-                    print(self.maze.player.pos)
-                    if (self.maze.player.pos.x == int(self.maze.player.pos.x) and
-                            self.maze.player.pos.y == int(self.maze.player.pos.y)):
+                    print(
+                        self.maze.player.pos, self.maze.player.dir.value,
+                        (self.maze.player.dir_queue.value
+                         if self.maze.player.dir_queue else None),
+                        self.maze.player.pos.x == int(self.maze.player.pos.x),
+                        self.maze.player.pos.y == int(self.maze.player.pos.y),
+                        end="")
+                    if (self.maze.player.pos.x ==
+                        int(self.maze.player.pos.x) and
+                        self.maze.player.pos.y ==
+                            int(self.maze.player.pos.y)):
                         self.maze.player.change_dir(
-                            self.maze.maze.maze[int(self.maze.player.pos.y)][int(self.maze.player.pos.x)])
-                    self.maze.player.move(1/12)
+                            self.maze.maze.maze[
+                                int(self.maze.player.pos.y)][
+                                    int(self.maze.player.pos.x)])
+                    self.maze.player.move(
+                        1/2, self.maze.maze.maze[
+                            int(self.maze.player.pos.y)][
+                                int(self.maze.player.pos.x)].walls
+                        if (self.maze.player.pos.y.is_integer() and
+                            self.maze.player.pos.x.is_integer()) else None)
                     self.detect_obj_collisions()
                     self.visualizer.update_display(self.current_screen)
 
-                self.visualizer.clock.tick(30)
+                self.visualizer.clock.tick(5)
+                print()
 
         except CloseProgram:
             self.visualizer.terminate()
@@ -210,6 +226,15 @@ class PacMan:
                 # self.maze.player.pos = (
                 #     CoordinatesFloat(self.maze.player.pos.x - 1,
                 #                      self.maze.player.pos.y))
+            elif (event.key == pygame.K_p):
+                self.maze.player.wall_phase = not self.maze.player.wall_phase
+
+            elif (event.key == pygame.K_i):
+                self.maze.player.invincibility = (
+                    not self.maze.player.invincibility)
+
+            elif (event.key == pygame.K_o):
+                self.maze.player.extra_speed = not self.maze.player.extra_speed
 
             self.visualizer.update_display(self.current_screen)
 

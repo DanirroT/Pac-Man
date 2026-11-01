@@ -25,8 +25,8 @@ class CoordinatesFloat(NamedTuple):
 
 class Overlays(Enum):
     PAUSE = "p"
-    WIN = "w"
-    LOSE = "l"
+    # WIN = "w"
+    # LOSE = "l"
     STARTING = "s"
 
 
@@ -36,6 +36,7 @@ class Directions(Enum):
     DOWN = "d"
     LEFT = "l"
 
+    STARTING = "sr"
     NA = "na"
 
 

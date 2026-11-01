@@ -2,7 +2,8 @@ from src import Coordinates
 from pydantic import BaseModel, Field, field_validator
 
 import logging
-from mazegenerator import MazeGenerator as ExternalMazeGenerator
+from mazegenerator import (  # pyright: ignore
+    MazeGenerator as ExternalMazeGenerator)
 logger = logging.getLogger(__name__)
 MIN_WIDTH, MIN_HEIGHT = 14, 10
 MAX_WIDTH, MAX_HEIGHT = 50, 40
@@ -71,7 +72,7 @@ class MazeGenerator:
             height=15,
             entry=Coordinates(0, 0),
             exit=Coordinates(19, 14),
-            perfect=True,
+            perfect=False,
             seed=42
         )
 
@@ -97,7 +98,7 @@ class MazeGenerator:
         #     height=3,
         #     entry=Coordinates(0, 0),
         #     exit=Coordinates(2, 2),
-        #     perfect=True,
+        #     perfect=False,
         #     seed=42
         # )
 

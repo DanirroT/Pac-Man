@@ -33,10 +33,10 @@ class Cell:
     def __init__(self, loc: Coordinates, value: int):
         self.loc = loc
         self.walls = Walls(
-            bool(value & 1),  # left wall
-            bool(value & 2),  # bottom wall
-            bool(value & 4),  # right wall
-            bool(value & 8),  # top wall
+            bool(value & 1),  # top wall
+            bool(value & 2),  # right wall
+            bool(value & 4),  # left wall
+            bool(value & 8),  # bottom wall
         )
         wall_count = sum(self.walls)
 
@@ -96,7 +96,7 @@ class Player():
 
     def __init__(self, pos: Coordinates, lives: int,
                  map_dimensions: Coordinates,
-                 dir: Directions = Directions.RIGHT
+                 dir: Directions = Directions.STARTING
                  ) -> None:
         self.pos = CoordinatesFloat(*pos)
         self.starting_pos = pos
@@ -105,16 +105,19 @@ class Player():
         self.map_dimensions = map_dimensions
 
     def handle_input(self, input_dir: Directions) -> None:
-        if (self.dir == Directions.UP and input_dir == Directions.DOWN or
-            self.dir == Directions.DOWN and input_dir == Directions.UP or
-            self.dir == Directions.LEFT and input_dir == Directions.RIGHT or
-                self.dir == Directions.RIGHT and input_dir == Directions.LEFT):
+        # if (self.dir == Directions.STARTING):
+        #     self.dir = input_dir
+        #     return
+        if ("u" in self.dir.value and "d" in input_dir.value or
+            "d" in self.dir.value and "u" in input_dir.value or
+            "l" in self.dir.value and "r" in input_dir.value or
+                "r" in self.dir.value and "l" in input_dir.value):
             self.dir = input_dir
             self.dir_queue = None
             return
 
         if self.dir == input_dir:
-            self.dir = input_dir
+            self.dir_queue = None
             return
         if self.dir_queue == input_dir:
             return
@@ -122,12 +125,27 @@ class Player():
 
     def change_dir(self, cell: Cell) -> bool:
 
-        possible = [
-            Directions.UP if cell.walls.up else Directions.NA,
-            Directions.DOWN if cell.walls.down else Directions.NA,
-            Directions.LEFT if cell.walls.left else Directions.NA,
-            Directions.RIGHT if cell.walls.right else Directions.NA
-        ]
+        if ("s" not in self.dir.value and not self.wall_phase
+            and (self.pos != self.starting_pos)
+            and cell.state in (CellState.CORRIDOR,
+                               CellState.BLOCKED,
+                               CellState.DEADEND)):
+            return False
+
+        if self.wall_phase:
+            possible = {Directions.UP, Directions.DOWN,
+                        Directions.LEFT, Directions.RIGHT}
+        else:
+            possible = {
+                Directions.UP if not cell.walls.up else Directions.NA,
+                Directions.DOWN if not cell.walls.down else Directions.NA,
+                Directions.LEFT if not cell.walls.left else Directions.NA,
+                Directions.RIGHT if not cell.walls.right else Directions.NA
+            }
+
+        print(" - Change Dir",
+              [p.value for p in possible if p != Directions.NA],
+              cell.state, end="")
 
         if self.dir_queue in possible:
             self.dir = self.dir_queue
@@ -139,9 +157,16 @@ class Player():
             self.dir_queue = None
             return False
 
-    def move(self, movement: float) -> None:
+    def move(self, movement: float, cell: Walls | None = None) -> None:
         if self.extra_speed:
             movement *= 2
+
+        if cell and not self.wall_phase:
+            if ("u" in self.dir.value and cell.up or
+                "d" in self.dir.value and cell.down or
+                "l" in self.dir.value and cell.left or
+                    "r" in self.dir.value and cell.right):
+                return
 
         self.pos = CoordinatesFloat(
             self.pos.x + (movement if "r" in self.dir.value else 0)
@@ -161,7 +186,8 @@ class Player():
 
     def reset(self) -> None:
         self.pos = CoordinatesFloat(*self.starting_pos)
-        self.dir = Directions.RIGHT
+        self.dir = Directions.STARTING
+        self.dir_queue = None
         self.supergum_power = False
         self.invincibility = False
         self.wall_phase = False
