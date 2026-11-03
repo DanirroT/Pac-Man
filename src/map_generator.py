@@ -42,6 +42,13 @@ class MazeGenerator:
 
     configs: MazeConfigs
 
+    def _clamp_size(self, size: Coordinates) -> Coordinates:
+        """Force the size into [MIN, MAX]"""
+
+    def _validate(self, grid: list[list[int]]) -> None:
+        """Raise MazeGenerationError if the grid is not usable."""
+
+
     def __init__(self, lvl_layout: Coordinates, seed: int | None = None):
         size = self._clamp_size(lvl_layout)
         self.configs = MazeConfigs(
