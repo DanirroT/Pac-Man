@@ -44,10 +44,25 @@ class MazeGenerator:
 
     def _clamp_size(self, size: Coordinates) -> Coordinates:
         """Force the size into [MIN, MAX]"""
+        width = max(MIN_WIDTH, min(size.x, MAX_WIDTH))
+        height = max(MIN_HEIGHT, min(size.y, MAX_HEIGHT))
+        if (width, height) != (size.x, size.y):
+            logger.warning("Maze size %dx%d out of range, using %dx%d",
+                           size.x, size.y, width, height)
+        return Coordinates(width, height)
 
     def _validate(self, grid: list[list[int]]) -> None:
         """Raise MazeGenerationError if the grid is not usable."""
-
+        if len(grid) != self.configs.height:
+            raise MazeGenerationError("maze has the wrong number of rows")
+        for row in grid:
+            if len(row) != self.configs.width:
+                raise MazeGenerationError("row has the wrong length number")
+            for cell in row:
+                if not 0 <= cell <= 15:
+                    raise MazeGenerationError(
+                        f"invalid cell value {cell}, expected 0-15"
+                    )
 
     def __init__(self, lvl_layout: Coordinates, seed: int | None = None):
         size = self._clamp_size(lvl_layout)
