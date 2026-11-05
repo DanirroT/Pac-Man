@@ -126,7 +126,7 @@ class Player():
     def change_dir(self, cell: Cell) -> bool:
 
         if ("s" not in self.dir.value and not self.wall_phase
-            and (self.pos != self.starting_pos)
+            and (self.pos != CoordinatesFloat(*self.starting_pos))
             and cell.state in (CellState.CORRIDOR,
                                CellState.BLOCKED,
                                CellState.DEADEND)):
