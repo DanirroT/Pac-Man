@@ -1,11 +1,13 @@
 from __future__ import annotations
 from src import (Overlays, Screens, Directions,
-                 Coordinates,
+                 Coordinates, CoordinatesFloat, s_round,
                  PMArgs, CloseProgram,
                  WindowedVisualizer, Maze, get_from_json_file)
 from typing import TYPE_CHECKING
 import json
 import pygame
+from time import time
+from math import isclose
 
 if TYPE_CHECKING:
     from pygame.event import Event
@@ -19,7 +21,12 @@ class PacMan:
     player_name: str = ""
 
     current_screen: Screens
+    overlay: Overlays | None
     visualizer: WindowedVisualizer
+
+    control: bool
+    space: bool
+    space_timer: float | None
 
     def __init__(self, args: PMArgs) -> None:
         self.args = args
@@ -58,84 +65,115 @@ class PacMan:
         self.visualizer.show_start(self.highscore)
         self.current_screen = Screens.START
 
-        self.control: bool = False
-        self.overlay: Overlays | None = None
+        tick_rate = 30
+
+        self.control = False
+        self.space = False
+        self.overlay = None
+        self.space_timer = None
         try:
             while True:
-                resize = False
+                self.visualizer.clock.tick(tick_rate)
                 frame_step = self.visualizer.clock.get_rawtime()
-                for event in pygame.event.get():
-                    if event.type == pygame.MOUSEMOTION:
-                        continue
-                    else:
-                        print(event)
 
-                    if (event.type == pygame.QUIT):
-                        raise CloseProgram
-                    elif event.type == pygame.KEYUP:
-                        if event.key == pygame.K_LCTRL:
-                            self.control = False
-                            continue
-                    elif event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_LCTRL:
-                            self.control = True
-                            continue
-                        if (self.control and event.key == pygame.K_c):
-                            raise KeyboardInterrupt
+                self.basic_game_functions()
 
-                    elif ((event.type == pygame.VIDEORESIZE)
-                          and not resize):
-                        # or event.type == pygame.WINDOWSIZECHANGED
-
-                        # print("VIDEORESIZE", event.w, event.h)
-                        # print()
-                        self.visualizer.update_display(
-                            self.current_screen, Coordinates(event.w, event.h))
-                        resize = True
-                        continue
-
-                    else:
-                        continue
-
-                    if self.current_screen in [Screens.START,
-                                               Screens.LOSE,
-                                               Screens.WIN]:
-                        self.process_menu_events(event)
-                    elif self.current_screen in [Screens.SCORING]:
-                        self.process_scoring_events(event)
-                    else:
-                        self.process_game_events(event)
                 if (self.current_screen == Screens.GAME and  # pyright: ignore
                         not self.overlay and frame_step):
-                    print(
-                        self.maze.player.pos, self.maze.player.dir.value,
-                        (self.maze.player.dir_queue.value
-                         if self.maze.player.dir_queue else None),
-                        self.maze.player.pos.x == int(self.maze.player.pos.x),
-                        self.maze.player.pos.y == int(self.maze.player.pos.y),
-                        end="")
-                    if (self.maze.player.pos.x ==
-                        int(self.maze.player.pos.x) and
-                        self.maze.player.pos.y ==
-                            int(self.maze.player.pos.y)):
-                        self.maze.player.change_dir(
-                            self.maze.maze.maze[
-                                int(self.maze.player.pos.y)][
-                                    int(self.maze.player.pos.x)])
+
+                    if self.is_close_int(self.maze.player.pos.x):
+                        self.maze.player.pos = CoordinatesFloat(
+                            s_round(self.maze.player.pos.x),
+                            self.maze.player.pos.y)
+
+                    if self.is_close_int(self.maze.player.pos.y):
+                        self.maze.player.pos = CoordinatesFloat(
+                            self.maze.player.pos.x,
+                            s_round(self.maze.player.pos.y))
+
+                    corrent_cell = self.maze.maze.maze[
+                        s_round(self.maze.player.pos.y)][
+                            s_round(self.maze.player.pos.x)]
+
+                    if not self.overlay:
+                        print(
+                            self.maze.player.pos, self.maze.player.dir,
+                            (self.maze.player.dir_queue
+                             if self.maze.player.dir_queue else None),
+                            self.is_close_int(self.maze.player.pos.x),
+                            self.is_close_int(self.maze.player.pos.y),
+                            corrent_cell.state,
+                            end="")
+
+                    if (self.is_close_int_coords(self.maze.player.pos)):
+                        self.maze.player.change_dir(corrent_cell)
+
                     self.maze.player.move(
-                        1/2, self.maze.maze.maze[
-                            int(self.maze.player.pos.y)][
-                                int(self.maze.player.pos.x)].walls
-                        if (self.maze.player.pos.y.is_integer() and
-                            self.maze.player.pos.x.is_integer()) else None)
+                        (5/(tick_rate)), corrent_cell.walls
+                        if (self.is_close_int_coords(self.maze.player.pos))
+                        else None)
+
                     self.detect_obj_collisions()
                     self.visualizer.update_display(self.current_screen)
 
-                self.visualizer.clock.tick(5)
-                print()
+                    if self.space_timer:
+                        print("Space Timer:", time() - self.space_timer)
+
+                    if self.space and self.space_timer:
+                        if (time() - self.space_timer) > 2:
+                            self.next_game()
+                            self.space = False
+                            self.space_timer = None
+
+                    print()
 
         except CloseProgram:
             self.visualizer.terminate()
+
+    def basic_game_functions(self) -> None:
+        resize = False
+        for event in pygame.event.get():
+            if event.type in [pygame.MOUSEMOTION, pygame.TEXTINPUT]:
+                continue
+            else:
+                # print(event)
+                pass
+
+            if (event.type == pygame.QUIT):
+                raise CloseProgram
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_LCTRL:
+                    self.control = False
+                    continue
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LCTRL:
+                    self.control = True
+                    continue
+                if (self.control and event.key == pygame.K_c):
+                    raise KeyboardInterrupt
+
+            elif ((event.type == pygame.VIDEORESIZE)
+                    and not resize):
+                # or event.type == pygame.WINDOWSIZECHANGED
+
+                # print("VIDEORESIZE", event.w, event.h)
+                # print()
+                self.visualizer.update_display(
+                    self.current_screen, Coordinates(event.w, event.h))
+                resize = True
+                continue
+
+            else:
+                continue
+
+            if self.current_screen in [Screens.START,
+                                       Screens.LOSE,
+                                       Screens.WIN]:
+                self.process_menu_events(event)
+            elif self.current_screen in [Screens.SCORING]:
+                self.process_scoring_events(event)
+            else:
+                self.process_game_events(event)
 
     def process_menu_events(self, event: Event) -> None:
 
@@ -143,14 +181,7 @@ class PacMan:
             if (event.key == pygame.K_RETURN):
                 if self.current_screen == Screens.START:
                     self.maze.current_map = -1
-                try:
-                    self.next_game()
-                except IndexError:
-                    self.current_screen = Screens.SCORING
-                    self.player_name = ""
-                    self.visualizer.update_display(self.current_screen)
-                    return
-                self.current_screen = Screens.GAME
+                self.next_game()
             elif (event.key == pygame.K_ESCAPE and
                   self.current_screen == Screens.START):
                 raise CloseProgram
@@ -226,6 +257,7 @@ class PacMan:
                 # self.maze.player.pos = (
                 #     CoordinatesFloat(self.maze.player.pos.x - 1,
                 #                      self.maze.player.pos.y))
+
             elif (event.key == pygame.K_p):
                 self.maze.player.wall_phase = not self.maze.player.wall_phase
 
@@ -236,18 +268,32 @@ class PacMan:
             elif (event.key == pygame.K_o):
                 self.maze.player.extra_speed = not self.maze.player.extra_speed
 
-            self.visualizer.update_display(self.current_screen)
+            elif (event.key == pygame.K_SPACE):
+                self.space = True
+                self.space_timer = time()
+
+        elif event.type == pygame.KEYUP:
+            if (event.key == pygame.K_SPACE):
+                self.space = False
+                self.space_timer = None
 
     def next_game(self) -> None:
+
         self.current_screen = Screens.GAME
-        self.maze.load_next_map()
-        # self.maze.get_wall_less()
-        self.visualizer.maze_manager = self.maze
-        self.visualizer.maze_obj = self.maze.maze
-        self.visualizer.update_display(self.current_screen,
-                                       True)
-        self.overlay = Overlays.STARTING
-        self.visualizer.overlay(Overlays.STARTING)
+        try:
+            self.maze.load_next_map()
+            # self.maze.get_wall_less()
+            self.visualizer.maze_manager = self.maze
+            self.visualizer.maze_obj = self.maze.maze
+            self.visualizer.update_display(self.current_screen,
+                                           True)
+            self.overlay = Overlays.STARTING
+            self.visualizer.overlay(Overlays.STARTING)
+        except IndexError:
+            self.current_screen = Screens.SCORING
+            self.player_name = ""
+            self.visualizer.update_display(self.current_screen)
+            return
 
     def detect_obj_collisions(self) -> None:
         for ghost in self.maze.ghosts:
@@ -282,3 +328,12 @@ class PacMan:
         # if len(self.maze.supergum) + len(self.maze.pacgum) == 0:
         if len(self.maze.pacgum) == 0:
             self.current_screen = Screens.WIN
+
+    @staticmethod
+    def is_close_int(n: float) -> bool:
+        return isclose(n, s_round(n), abs_tol=0.001)
+
+    @staticmethod
+    def is_close_int_coords(coords: Coordinates | CoordinatesFloat) -> bool:
+        return (isclose(coords.x, s_round(coords.x), abs_tol=0.001) and
+                isclose(coords.y, s_round(coords.y), abs_tol=0.001))

@@ -111,12 +111,12 @@ class WindowedVisualizer():
         return Coordinates(
             round((pos.x - self.middle_map.x) * self.cell_size
                   + self.dimensions.x/2
-                  + ((self.cell_size / 2) if "r" in poi.value else 0)
-                  - ((self.cell_size / 2) if "l" in poi.value else 0)),
+                  + ((self.cell_size / 2) if "r" in str(poi) else 0)
+                  - ((self.cell_size / 2) if "l" in str(poi) else 0)),
             round(((pos.y - self.middle_map.y) * self.cell_size)
                   + self.dimensions.y/2
-                  + ((self.cell_size / 2) if "b" in poi.value else 0)
-                  - ((self.cell_size / 2) if "t" in poi.value else 0)))
+                  + ((self.cell_size / 2) if "b" in str(poi) else 0)
+                  - ((self.cell_size / 2) if "t" in str(poi) else 0)))
 
     def build_menus(self) -> None:
 

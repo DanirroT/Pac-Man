@@ -8,12 +8,15 @@ import random
 
 class CellState(Enum):
 
-    FORK = 1
-    DEADEND = 3
-    BLOCKED = 4
+    FORK = "fk"
+    DEADEND = "de"
+    BLOCKED = "bk"
 
-    CORRIDOR = 2
-    CORNER = 5
+    CORRIDOR = "cr"
+    CORNER = "cn"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class Walls(NamedTuple):
@@ -75,7 +78,7 @@ class MazeObj:
                 self.maze[y].append(Cell(Coordinates(x, y), value))
 
     def __str__(self) -> str:
-        return "\n".join("".join(str(cell.state.value) for cell in row)
+        return "\n".join("".join(str(cell.state) for cell in row)
                          for row in self.maze)
 
 
@@ -108,10 +111,10 @@ class Player():
         # if (self.dir == Directions.STARTING):
         #     self.dir = input_dir
         #     return
-        if ("u" in self.dir.value and "d" in input_dir.value or
-            "d" in self.dir.value and "u" in input_dir.value or
-            "l" in self.dir.value and "r" in input_dir.value or
-                "r" in self.dir.value and "l" in input_dir.value):
+        if ("u" in str(self.dir) and "d" in str(input_dir) or
+            "d" in str(self.dir) and "u" in str(input_dir) or
+            "l" in str(self.dir) and "r" in str(input_dir) or
+                "r" in str(self.dir) and "l" in str(input_dir)):
             self.dir = input_dir
             self.dir_queue = None
             return
@@ -125,7 +128,7 @@ class Player():
 
     def change_dir(self, cell: Cell) -> bool:
 
-        if ("s" not in self.dir.value and not self.wall_phase
+        if ("s" not in str(self.dir) and not self.wall_phase
             and (self.pos != CoordinatesFloat(*self.starting_pos))
             and cell.state in (CellState.CORRIDOR,
                                CellState.BLOCKED,
@@ -144,8 +147,7 @@ class Player():
             }
 
         print(" - Change Dir",
-              [p.value for p in possible if p != Directions.NA],
-              cell.state, end="")
+              [str(p) for p in possible if p != Directions.NA], end="")
 
         if self.dir_queue in possible:
             self.dir = self.dir_queue
@@ -162,17 +164,17 @@ class Player():
             movement *= 2
 
         if cell and not self.wall_phase:
-            if ("u" in self.dir.value and cell.up or
-                "d" in self.dir.value and cell.down or
-                "l" in self.dir.value and cell.left or
-                    "r" in self.dir.value and cell.right):
+            if ("u" in str(self.dir) and cell.up or
+                "d" in str(self.dir) and cell.down or
+                "l" in str(self.dir) and cell.left or
+                    "r" in str(self.dir) and cell.right):
                 return
 
         self.pos = CoordinatesFloat(
-            self.pos.x + (movement if "r" in self.dir.value else 0)
-            - (movement if "l" in self.dir.value else 0),
-            self.pos.y + (movement if "d" in self.dir.value else 0)
-            - (movement if "u" in self.dir.value else 0)
+            self.pos.x + (movement if "r" in str(self.dir) else 0)
+            - (movement if "l" in str(self.dir) else 0),
+            self.pos.y + (movement if "d" in str(self.dir) else 0)
+            - (movement if "u" in str(self.dir) else 0)
         )
 
         if self.pos.x < 0:
@@ -218,10 +220,10 @@ class Ghost():
 
     def move(self, movement: float) -> None:
         self.pos = CoordinatesFloat(
-            self.pos.x + (movement if "r" in self.dir.value else 0)
-            - (movement if "l" in self.dir.value else 0),
-            self.pos.y + (movement if "d" in self.dir.value else 0)
-            - (movement if "u" in self.dir.value else 0)
+            self.pos.x + (movement if "r" in str(self.dir) else 0)
+            - (movement if "l" in str(self.dir) else 0),
+            self.pos.y + (movement if "d" in str(self.dir) else 0)
+            - (movement if "u" in str(self.dir) else 0)
         )
         if self.pos.x < 0:
             self.pos = CoordinatesFloat(0, self.pos.y)
@@ -239,6 +241,7 @@ class Ghost():
     #     pass
 
 
+"""
 # class PacGum(MazeElement):
 
 #     pos: Coordinates
@@ -272,6 +275,7 @@ class Ghost():
 #                                self.get_sq_poi(ghost.pos), self.l_obj_size)
 #         pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
 #             self.maze_manager.player.pos), self.l_obj_size)
+"""
 
 
 class Maze:
@@ -329,18 +333,14 @@ class Maze:
 
         for cell in self.maze.maze[0][1:-1]:
             cell.walls = Walls(True, False, False, False)
-            cell.state = CellState.CORRIDOR
 
         for cell in self.maze.maze[-1][1:-1]:
             cell.walls = Walls(False, False, True, False)
-            cell.state = CellState.CORRIDOR
 
         for line in self.maze.maze[1:-1]:
             line[0].walls = Walls(False, False, False, True)
-            line[0].state = CellState.CORRIDOR
 
             line[-1].walls = Walls(False, True, False, False)
-            line[-1].state = CellState.CORRIDOR
 
         self.maze.maze[0][0].walls = Walls(True, False, False, True)
         self.maze.maze[0][0].state = CellState.CORNER

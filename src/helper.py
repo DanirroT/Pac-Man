@@ -12,7 +12,7 @@ class Coordinates(NamedTuple):
     y: int
 
     def __str__(self) -> str:
-        return f"x: {self.x}, y: {self.y}"
+        return f"x: {self.x:02d}, y: {self.y:02d}"
 
 
 class CoordinatesFloat(NamedTuple):
@@ -20,7 +20,7 @@ class CoordinatesFloat(NamedTuple):
     y: float
 
     def __str__(self) -> str:
-        return f"x: {self.x}, y: {self.y}"
+        return f"x: {self.x:02.2f}, y: {self.y:02.2f}"
 
 
 class Overlays(Enum):
@@ -28,6 +28,9 @@ class Overlays(Enum):
     # WIN = "w"
     # LOSE = "l"
     STARTING = "s"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class Directions(Enum):
@@ -39,13 +42,19 @@ class Directions(Enum):
     STARTING = "sr"
     NA = "na"
 
+    def __str__(self) -> str:
+        return self.value
+
 
 class Screens(Enum):
-    START = 1
-    GAME = 2
-    WIN = 3
-    LOSE = 4
-    SCORING = 5
+    START = "st"
+    GAME = "gm"
+    WIN = "wn"
+    LOSE = "ls"
+    SCORING = "sc"
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class SqPOI(Enum):
@@ -61,6 +70,9 @@ class SqPOI(Enum):
 
     C = "c"
 
+    def __str__(self) -> str:
+        return self.value
+
 
 # class MazeElement(ABC):
 #     """
@@ -75,3 +87,14 @@ class SqPOI(Enum):
 #     @abstractmethod
 #     def draw(self) -> None:
 #         pass
+
+def s_round(n: float) -> int:
+    """
+    Rounds a float to the nearest integer, with ties rounding away from zero.
+    """
+    if int(n) - n <= -0.5:
+        return int(n) + 1
+    elif int(n) - n >= 0.5:
+        return int(n) - 1
+    else:
+        return int(n)

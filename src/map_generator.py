@@ -81,7 +81,7 @@ class MazeGenerator:
                 entry_cell=(cfg.entry.x, cfg.entry.y),
                 exit_cell=(cfg.exit.x, cfg.exit.y),
                 seed=cfg.seed or 0)
-            grid = gen.maze
+            grid: list[list[int]] = gen.maze
         except Exception as err:
             raise MazeGenerationError(f"Maze generator failed: {err}") from err
         self._validate(grid)

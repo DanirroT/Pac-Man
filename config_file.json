@@ -1,6 +1,9 @@
 {
     "highscore_filename": "highscore.json",
-    "levels": [],
+    "levels": [
+        [20, 15],
+        [5, 5]
+    ],
     "lives" : 3,
     "pacgum" : 42,
     "points_per_pacgum" : 10,
