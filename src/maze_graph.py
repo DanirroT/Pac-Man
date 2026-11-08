@@ -1,24 +1,21 @@
 from __future__ import annotations
 from collections import deque
 from typing import TYPE_CHECKING
-from .helper import Coordinates
+from .helper import Coordinates, Directions
 
 if TYPE_CHECKING:
+    # Imported for type hints only, so there is no circular import at runtime.
     from .map_manager import MazeObj
 
-
-def _in_bounds(maze: MazeObj, pos: Coordinates) -> bool:
-    return 0 <= pos.x < maze.size.x and 0 <= pos.y < maze.size.y
-
-
-def _is_blocked(maze: MazeObj, pos: Coordinates) -> bool:
-    return all(maze.maze[pos.y][pos.x].walls)
+_STEP_DIRECTIONS: dict[tuple[int, int], Directions] = {
+    (0, -1): Directions.UP,
+    (1, 0): Directions.RIGHT,
+    (0, 1): Directions.DOWN,
+    (-1, 0): Directions.LEFT,
+}
 
 
 def neighbors(maze: MazeObj, pos: Coordinates) -> list[Coordinates]:
-    if not _in_bounds(maze, pos):
-        raise ValueError(f"position {pos} is outside the maze")
-
     walls = maze.maze[pos.y][pos.x].walls
     candidates = (
         (walls.up, Coordinates(pos.x, pos.y - 1)),
@@ -26,57 +23,47 @@ def neighbors(maze: MazeObj, pos: Coordinates) -> list[Coordinates]:
         (walls.down, Coordinates(pos.x, pos.y + 1)),
         (walls.left, Coordinates(pos.x - 1, pos.y)),
     )
-    result: list[Coordinates] = []
-    for has_wall, target in candidates:
-        if has_wall:
-            continue
-        if not _in_bounds(maze, target) or _is_blocked(maze, target):
-            continue
-        result.append(target)
-    return result
+    return [cell for wall, cell in candidates if not wall]
 
 
-def bfs_distances(maze: MazeObj, start: Coordinates) -> dict[Coordinates, int]:
-    if not _in_bounds(maze, start):
-        raise ValueError(f"position {start} is outside the maze")
-    if _is_blocked(maze, start):
-        return {}
+def find_path(maze: MazeObj, start: Coordinates,
+              goal: Coordinates) -> list[Coordinates]:
+    if start == goal:
+        return [start]
 
-    distances: dict[Coordinates, int] = {start: 0}
+    came_from: dict[Coordinates, Coordinates | None] = {start: None}
     queue: deque[Coordinates] = deque([start])
     while queue:
         current = queue.popleft()
         for target in neighbors(maze, current):
-            if target not in distances:
-                distances[target] = distances[current] + 1
-                queue.append(target)
-    return distances
-
-
-def nearest_open_cell(maze: MazeObj, start: Coordinates) -> Coordinates:
-    if not _in_bounds(maze, start):
-        raise ValueError(f"position {start} is outside the maze")
-
-    seen: set[Coordinates] = {start}
-    queue: deque[Coordinates] = deque([start])
-    while queue:
-        current = queue.popleft()
-        if not _is_blocked(maze, current):
-            return current
-        for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0)):
-            target = Coordinates(current.x + dx, current.y + dy)
-            if _in_bounds(maze, target) and target not in seen:
-                seen.add(target)
-                queue.append(target)
-    raise ValueError("the maze has no open cell")
-
-
-def unreachable_cells(maze: MazeObj, start: Coordinates) -> list[Coordinates]:
-    reachable = bfs_distances(maze, start)
-    missing: list[Coordinates] = []
-    for row in maze.maze:
-        for cell in row:
-            if cell.loc in reachable or all(cell.walls):
+            if target in came_from:
                 continue
-            missing.append(cell.loc)
-    return missing
+            came_from[target] = current
+            if target == goal:
+                return _rebuild_path(came_from, goal)
+            queue.append(target)
+    return []
+
+
+def _rebuild_path(came_from: dict[Coordinates, Coordinates | None],
+                  goal: Coordinates) -> list[Coordinates]:
+    path: list[Coordinates] = []
+    step: Coordinates | None = goal
+    while step is not None:
+        path.append(step)
+        step = came_from[step]
+    path.reverse()
+    return path
+
+
+def direction_between(here: Coordinates, there: Coordinates) -> Directions:
+    return _STEP_DIRECTIONS.get((there.x - here.x, there.y - here.y),
+                                Directions.NA)
+
+
+def next_direction(maze: MazeObj, start: Coordinates,
+                   goal: Coordinates) -> Directions:
+    path = find_path(maze, start, goal)
+    if len(path) < 2:
+        return Directions.NA
+    return direction_between(path[0], path[1])
