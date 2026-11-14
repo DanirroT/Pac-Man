@@ -1,7 +1,7 @@
 from __future__ import annotations
 from src import (Overlays, Screens, Directions,
                  Coordinates, CoordinatesFloat, s_round,
-                 PMArgs, CloseProgram,
+                 PMArgs, CloseProgram, GhostState,
                  WindowedVisualizer, Maze, get_from_json_file)
 from typing import TYPE_CHECKING
 import json
@@ -112,6 +112,11 @@ class PacMan:
                         (5/(tick_rate)), corrent_cell.walls
                         if (self.is_close_int_coords(self.maze.player.pos))
                         else None)
+                    
+                    #
+                    for ghost in self.maze.ghosts:
+                        ghost.update(self.maze.maze, self.maze.player,
+                                     5 / tick_rate, 1 / tick_rate)
 
                     self.detect_obj_collisions()
                     self.visualizer.update_display(self.current_screen)
@@ -268,6 +273,11 @@ class PacMan:
             elif (event.key == pygame.K_o):
                 self.maze.player.extra_speed = not self.maze.player.extra_speed
 
+            #
+            elif (event.key == pygame.K_f):
+                for ghost in self.maze.ghosts:
+                    ghost.frozen = not ghost.frozen
+
             elif (event.key == pygame.K_SPACE):
                 self.space = True
                 self.space_timer = time()
@@ -299,16 +309,35 @@ class PacMan:
         for ghost in self.maze.ghosts:
             if (pow(ghost.pos.x - self.maze.player.pos.x, 2) +
                     pow(ghost.pos.y - self.maze.player.pos.y, 2) < 0.5):
-                if self.maze.player.supergum_power:
+                # Scenario depend on ghost state (ghost.py, tried to make life easier):
+                # edible -> eaten, scored once
+                # chasing -> costs a life; eaten ghosts are harmless while return to respawn
+                if ghost.state == GhostState.FRIGHTENED:
                     ghost.die()
                     self.maze.score += self.args.points_per_ghost
-                elif not self.maze.player.invincibility:
+                elif (ghost.state == GhostState.CHASE
+                        and not self.maze.player.invincibility):
                     self.maze.player.lives -= 1
                     if self.maze.player.lives <= 0:
                         self.current_screen = Screens.LOSE
                     else:
                         self.maze.player.reset()
+                        # Ghosts go back to corners
+                        for other in self.maze.ghosts:
+                            other.reset()
                     return
+
+                # ORIGINAL IN CASE 
+                # if self.maze.player.supergum_power:
+                #     ghost.die()
+                #     self.maze.score += self.args.points_per_ghost
+                # elif not self.maze.player.invincibility:
+                #     self.maze.player.lives -= 1
+                #     if self.maze.player.lives <= 0:
+                #         self.current_screen = Screens.LOSE
+                #     else:
+                #         self.maze.player.reset()
+                #     return
 
         if len(self.maze.pacgum):
             for pacgum in self.maze.pacgum.copy():
@@ -323,7 +352,11 @@ class PacMan:
                         pow(supergum.y - self.maze.player.pos.y, 2) < (1/16)):
                     self.maze.supergum.remove(supergum)
                     self.maze.score += self.args.points_per_super_pacgum
-                    self.maze.player.supergum_power = True
+                    # ghost becomes edible; timer runs out alone
+                    for ghost in self.maze.ghosts:
+                        ghost.frighten()
+                    # ORIGINAL
+                    # self.maze.player.supergum_power = True
 
         # if len(self.maze.supergum) + len(self.maze.pacgum) == 0:
         if len(self.maze.pacgum) == 0:

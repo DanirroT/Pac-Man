@@ -2,8 +2,11 @@ from .helper import (Coordinates, CoordinatesFloat, CloseProgram,
                      SqPOI, Screens, Directions, Overlays, s_round)
 from .inputs import PMArgs, input_args, get_from_json_file
 from .map_generator import MazeGenerator
+# Ghost has own module (ghost.py).
+# Imported before map_manager, which imports Ghost from this package.
+from .ghost import Ghost, GhostState, GhostStyle
 from .map_manager import (Maze, MazeObj, Cell,
-                          CellState, Player, Ghost)
+                          CellState, Player)
 from .display import WindowedVisualizer
 from .pacman_engine import PacMan
 
@@ -12,6 +15,6 @@ __all__ = [
     "CloseProgram", "SqPOI", "Screens", "Directions", "Overlays",
     "PMArgs", "input_args", "get_from_json_file",
     "MazeGenerator", "Maze", "MazeObj", "Cell",
-    "CellState", "Player", "Ghost",
+    "CellState", "Player", "Ghost", "GhostState", "GhostStyle",
     "WindowedVisualizer", "PacMan"
 ]

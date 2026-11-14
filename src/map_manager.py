@@ -1,6 +1,6 @@
 
 from src import (CoordinatesFloat, PMArgs, MazeGenerator, Coordinates,
-                 Directions)
+                 Directions, Ghost, GhostStyle)
 from typing import NamedTuple
 from enum import Enum
 import random
@@ -195,50 +195,52 @@ class Player():
         self.wall_phase = False
         self.extra_speed = False
 
+# Ghost class in ghost.py (states, chase styles, movement)
 
-class Ghost():
+# ORIGINAL
+# class Ghost():
 
-    pos: CoordinatesFloat
-    starting_pos: Coordinates
-    dir: Directions
-    color: tuple[int, int, int]
-    # ai: DecisionAlgorithm
-    map_dimensions: Coordinates
-    target: Coordinates | None = None
+#     pos: CoordinatesFloat
+#     starting_pos: Coordinates
+#     dir: Directions
+#     color: tuple[int, int, int]
+#     # ai: DecisionAlgorithm
+#     map_dimensions: Coordinates
+#     target: Coordinates | None = None
 
-    def __init__(self, color: tuple[int, int, int], pos: Coordinates,
-                 map_dimensions: Coordinates,
-                 dir: Directions = Directions.RIGHT) -> None:
-        self.pos = CoordinatesFloat(*pos)
-        self.starting_pos = pos
-        self.dir = dir
-        self.color = color
-        self.map_dimensions = map_dimensions
+#     def __init__(self, color: tuple[int, int, int], pos: Coordinates,
+#                  map_dimensions: Coordinates,
+#                  dir: Directions = Directions.RIGHT) -> None:
+#         self.pos = CoordinatesFloat(*pos)
+#         self.starting_pos = pos
+#         self.dir = dir
+#         self.color = color
+#         self.map_dimensions = map_dimensions
 
-    def change_dir(self, dir: Directions) -> None:
-        self.dir = dir
+#     def change_dir(self, dir: Directions) -> None:
+#         self.dir = dir
 
-    def move(self, movement: float) -> None:
-        self.pos = CoordinatesFloat(
-            self.pos.x + (movement if "r" in str(self.dir) else 0)
-            - (movement if "l" in str(self.dir) else 0),
-            self.pos.y + (movement if "d" in str(self.dir) else 0)
-            - (movement if "u" in str(self.dir) else 0)
-        )
-        if self.pos.x < 0:
-            self.pos = CoordinatesFloat(0, self.pos.y)
-        if self.pos.y < 0:
-            self.pos = CoordinatesFloat(self.pos.x, 0)
-        if self.pos.x >= self.map_dimensions.x:
-            self.pos = CoordinatesFloat(self.map_dimensions.x - 1, self.pos.y)
-        if self.pos.y >= self.map_dimensions.y:
-            self.pos = CoordinatesFloat(self.pos.x, self.map_dimensions.y - 1)
+#     def move(self, movement: float) -> None:
+#         self.pos = CoordinatesFloat(
+#             self.pos.x + (movement if "r" in str(self.dir) else 0)
+#             - (movement if "l" in str(self.dir) else 0),
+#             self.pos.y + (movement if "d" in str(self.dir) else 0)
+#             - (movement if "u" in str(self.dir) else 0)
+#         )
+#         if self.pos.x < 0:
+#             self.pos = CoordinatesFloat(0, self.pos.y)
+#         if self.pos.y < 0:
+#             self.pos = CoordinatesFloat(self.pos.x, 0)
+#         if self.pos.x >= self.map_dimensions.x:
+#             self.pos = CoordinatesFloat(self.map_dimensions.x - 1, self.pos.y)
+#         if self.pos.y >= self.map_dimensions.y:
+#             self.pos = CoordinatesFloat(self.pos.x, self.map_dimensions.y - 1)
 
-    def die(self) -> None:
-        self.target = self.starting_pos
+#     def die(self) -> None:
+#         self.target = self.starting_pos
 
-    # def draw(self) -> None:
-    #     pass
+#     # def draw(self) -> None:
+#     #     pass
 
 
 """
@@ -354,17 +356,35 @@ class Maze:
     def setup_map(self) -> None:
         map_dimensions = self.maze.size
 
+        # Each ghost has chase mode (GhostStyle in ghost.py):
+        # red goes straight for pacman
+        # pink aims ahead of it
+        # cyan wanders until the player is close
+        # orange backs off when the player is near
         self.ghosts = [
             Ghost((255, 0, 0), Coordinates(0, 0),
-                  map_dimensions, Directions.RIGHT),
+                  map_dimensions, Directions.RIGHT, GhostStyle.DIRECT),
             Ghost((255, 184, 255), Coordinates(0, map_dimensions.y-1),
-                  map_dimensions, Directions.DOWN),
+                  map_dimensions, Directions.DOWN, GhostStyle.AMBUSH),
             Ghost((0, 255, 255), Coordinates(map_dimensions.x-1, 0),
-                  map_dimensions, Directions.LEFT),
+                  map_dimensions, Directions.LEFT, GhostStyle.WANDER),
             Ghost((255, 184, 81), Coordinates(
                 map_dimensions.x-1, map_dimensions.y-1),
-                map_dimensions, Directions.UP)
+                map_dimensions, Directions.UP, GhostStyle.SHY)
         ]
+
+        # ORIGINAL
+        # self.ghosts = [
+        #     Ghost((255, 0, 0), Coordinates(0, 0),
+        #           map_dimensions, Directions.RIGHT),
+        #     Ghost((255, 184, 255), Coordinates(0, map_dimensions.y-1),
+        #           map_dimensions, Directions.DOWN),
+        #     Ghost((0, 255, 255), Coordinates(map_dimensions.x-1, 0),
+        #           map_dimensions, Directions.LEFT),
+        #     Ghost((255, 184, 81), Coordinates(
+        #         map_dimensions.x-1, map_dimensions.y-1),
+        #         map_dimensions, Directions.UP)
+        # ]
 
         self.supergum = [
             Coordinates(0, 0), Coordinates(map_dimensions.x-1, 0),
