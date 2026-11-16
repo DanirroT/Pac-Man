@@ -1,3 +1,11 @@
+"""
+Ghosts: states, targets and cell-to-cell movement.
+States:
+    CHASE       walks towards target that depends on ghost type
+    FRIGHTENED  edible, runs to corner farthest from pacman
+    EATEN       walks back to starting corner then waits to respawn
+"""
+
 from __future__ import annotations
 import random
 from enum import Enum
@@ -10,12 +18,12 @@ if TYPE_CHECKING:
 
 Color = tuple[int, int, int]
 
-FRIGHTENED_TIME = 8.0    
-BLINK_TIME = 2.0         
-RESPAWN_TIME = 5.0       
-AMBUSH_DISTANCE = 4      
-SHY_DISTANCE = 8         
-WANDER_DISTANCE = 5      
+FRIGHTENED_TIME = 8.0       # seconds ghost stays edible
+BLINK_TIME = 2.0            # ghosts blink during final seconds of edible
+RESPAWN_TIME = 5.0          # seconds before eaten ghost chases again
+AMBUSH_DISTANCE = 4         # cells ahead of pacman that PINK aims
+SHY_DISTANCE = 8            # ORANGE backs off when close to distance
+WANDER_DISTANCE = 5         # CYAN ghosts chase when pacman is close
 EPSILON = 1e-9
 
 FRIGHTENED_COLOR: Color = (33, 33, 255)
@@ -24,8 +32,12 @@ EATEN_COLOR: Color = (90, 90, 90)
 
 
 class GhostState(Enum):
-
-
+    """
+    State of ghost:
+    - chase mode
+    - frightened
+    - eaten
+    """
     CHASE = "ch"
     FRIGHTENED = "fr"
     EATEN = "ea"
@@ -35,17 +47,23 @@ class GhostState(Enum):
 
 
 class GhostStyle(Enum):
-
-
+    """
+    How ghost picks target while chasing:
+    - Goes straight for pacman (direct)
+    - Aims X cells ahead of pacman (ambush)
+    - Roams randomly until pacman close (wander)
+    - Chases from far, backs off when close (shy)
+    """
     DIRECT = "direct"
-    AMBUSH = "ambush"    
-    WANDER = "wander"    
-    SHY = "shy"          
+    AMBUSH = "ambush"
+    WANDER = "wander"
+    SHY = "shy"
 
     def __str__(self) -> str:
         return self.value
 
 
+# Ghost speed compared to what pacman gets each frame
 SPEED: dict[GhostState, float] = {
     GhostState.CHASE: 0.85,
     GhostState.FRIGHTENED: 0.5,
@@ -61,11 +79,25 @@ _AHEAD: dict[Directions, tuple[int, int]] = {
 
 
 def _distance(a: Coordinates, b: Coordinates) -> int:
-
+    """
+    Return manhattan distance between two cells (ignore wall)
+    """
     return abs(a.x - b.x) + abs(a.y - b.y)
 
 
 class Ghost:
+    """
+    Ghost:
+    - where located
+    - what doing
+    - where heading
+
+    pos: what gets drawn and used for collisions
+    cell: last cell centre ghost reached
+    heading_to: next cell centre ghost goes
+    
+    Ghost is only ever on straight line between two cells
+    """
     pos: CoordinatesFloat
     cell: Coordinates
     heading_to: Coordinates | None
@@ -83,7 +115,9 @@ class Ghost:
                  map_dimensions: Coordinates,
                  dir: Directions = Directions.RIGHT,
                  style: GhostStyle = GhostStyle.DIRECT) -> None:
-
+        """
+        Create a ghost standing on pos (its respawn)
+        """
         self.base_color = color
         self.starting_pos = pos
         self.map_dimensions = map_dimensions
@@ -95,7 +129,12 @@ class Ghost:
 
     @property
     def color(self) -> Color:
-
+        """
+        Colors:
+        - normal
+        - blue (edible)
+        - grey (eaten)
+        """
         if self.state == GhostState.EATEN:
             return EATEN_COLOR
         if self.state == GhostState.FRIGHTENED:
@@ -105,7 +144,10 @@ class Ghost:
         return self.base_color
 
     def reset(self) -> None:
-
+        """
+        Put ghost back to respawn
+        Then put in CHASE state
+        """
         self.pos = CoordinatesFloat(*self.starting_pos)
         self.cell = self.starting_pos
         self.heading_to = None
@@ -116,24 +158,40 @@ class Ghost:
         self._wander = None
 
     def change_dir(self, dir: Directions) -> None:
-
+        """
+        Set direction ghost is facing
+        """
         self.dir = dir
 
     def frighten(self, duration: float = FRIGHTENED_TIME) -> None:
-
+        """
+        Make ghost edible (eaten ones not affected)
+        """
         if self.state == GhostState.EATEN:
             return
         self.state = GhostState.FRIGHTENED
         self.timer = duration
 
     def die(self, respawn_time: float = RESPAWN_TIME) -> None:
-
+        """
+        Get eaten = walk to respawn,
+        then wait until respawn_time over
+        """
         self.state = GhostState.EATEN
         self.timer = respawn_time
         self.target = self.starting_pos
 
     def update(self, maze: MazeObj, player: Player,
                movement: float, dt: float) -> None:
+        """Advance ghost by 1 frame
+
+        Args:
+            maze: current maze
+            player: Pacman (position/direction are read)
+            movement: Cells pacman moves current frame,
+                ghost moves a fraction of it (depend on state)
+            dt: Seconds of game time that passed
+        """
         if self.frozen:
             return
         self._update_timers(dt)
@@ -147,7 +205,10 @@ class Ghost:
             budget = self._advance(heading, budget)
 
     def _update_timers(self, dt: float) -> None:
-  
+        """
+        Count timers down
+        Switch state when run out
+        """
         if self.state == GhostState.CHASE:
             return
         self.timer -= dt
@@ -159,7 +220,10 @@ class Ghost:
             self.state = GhostState.CHASE
 
     def _advance(self, heading: Coordinates, budget: float) -> float:
-
+        """
+        Move to heading;
+        return movement left over
+        """
         dx = heading.x - self.pos.x
         dy = heading.y - self.pos.y
         remaining = abs(dx) + abs(dy)
@@ -175,7 +239,10 @@ class Ghost:
 
     def _pick_next_cell(self, maze: MazeObj,
                         player: Player) -> Coordinates | None:
-
+        """
+        Choose next cell on the way to target,
+        or None to wait
+        """
         player_cell = Coordinates(s_round(player.pos.x),
                                   s_round(player.pos.y))
         goals = self._goals(maze, player_cell, player.dir)
@@ -191,7 +258,13 @@ class Ghost:
 
     def _goals(self, maze: MazeObj, player_cell: Coordinates,
                player_dir: Directions) -> list[Coordinates]:
+        """
+        Return cells to aim,
+        best first (later ones are backup)
 
+        Goal with no route (ex: blocked cell) skipped,
+        which is why chasing styles always keeps pacman cell as backup
+        """
         if self.state == GhostState.EATEN:
             return [self.starting_pos]
         if self.state == GhostState.FRIGHTENED:
@@ -208,7 +281,9 @@ class Ghost:
 
     def _corners_far_from(self, maze: MazeObj,
                           player_cell: Coordinates) -> list[Coordinates]:
-
+        """
+        Return corners, farthest from pacman first
+        """
         last_x = maze.size.x - 1
         last_y = maze.size.y - 1
         corners = [Coordinates(0, 0), Coordinates(last_x, 0),
@@ -220,7 +295,9 @@ class Ghost:
     @staticmethod
     def _ahead_of(maze: MazeObj, player_cell: Coordinates,
                   player_dir: Directions) -> Coordinates:
-
+        """
+        Return cell a few steps in front of pacman (in grid)
+        """
         dx, dy = _AHEAD.get(player_dir, (0, 0))
         x = player_cell.x + dx * AMBUSH_DISTANCE
         y = player_cell.y + dy * AMBUSH_DISTANCE
@@ -228,7 +305,10 @@ class Ghost:
                            min(max(y, 0), maze.size.y - 1))
 
     def _wander_goal(self, maze: MazeObj) -> Coordinates:
-
+        """
+        Return random open cell,
+        kept until ghost reaches it
+        """
         if self._wander is None or self._wander == self.cell:
             open_cells = [cell.loc for row in maze.maze for cell in row
                           if not all(cell.walls)]

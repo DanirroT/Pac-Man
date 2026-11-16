@@ -319,9 +319,14 @@ class Maze:
                 raise IndexError("No more maps available.")
 
         self.current_map += 1
-
+        # First mazebuses configured seed;
+        # the next levels get no seed, so generator makes random maze.
+        seed = self.args.seed if self.current_map == 0 else None
         map_generator = MazeGenerator(self.args.levels[self.current_map],
-                                      self.args.seed)
+                                      seed)
+        # ORIGINAL
+        # map_generator = MazeGenerator(self.args.levels[self.current_map],
+        #                               self.args.seed)
         map_int = map_generator.generate_maze()
         self.maze = MazeObj(map_int)
 
