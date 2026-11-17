@@ -1,9 +1,13 @@
 
+from __future__ import annotations
 from src import (CoordinatesFloat, PMArgs, MazeGenerator, Coordinates,
                  Directions, Ghost, GhostStyle)
 from typing import NamedTuple
 from enum import Enum
 import random
+import pygame
+from pygame import Surface
+import time
 
 
 class CellState(Enum):
@@ -97,6 +101,21 @@ class Player():
     map_dimensions: Coordinates
     dir_queue: Directions | None = None
 
+    sprites: PacmanSprites
+    sprite_state: int
+    timer: float
+
+    class PacmanSprites(list[Surface]):
+
+        def __init__(self) -> None:
+            super().__init__()
+            for i in range(13):
+                self.append(
+                    pygame.image.load(f"images/PacMan/pacman{i}.png"
+                                      ).convert_alpha())
+            self.append(self[-1])
+            self[-1].fill((255, 255, 255, 0), None, pygame.BLEND_RGBA_MULT)
+
     def __init__(self, pos: Coordinates, lives: int,
                  map_dimensions: Coordinates,
                  dir: Directions = Directions.STARTING
@@ -106,6 +125,9 @@ class Player():
         self.dir = dir
         self.lives = lives
         self.map_dimensions = map_dimensions
+        self.sprites = self.PacmanSprites()
+        self.sprite_state = 0
+        self.timer = 5.0
 
     def handle_input(self, input_dir: Directions) -> None:
         # if (self.dir == Directions.STARTING):
@@ -146,8 +168,8 @@ class Player():
                 Directions.RIGHT if not cell.walls.right else Directions.NA
             }
 
-        print(" - Change Dir",
-              [str(p) for p in possible if p != Directions.NA], end="")
+        # print(" - Change Dir",
+        #       [str(p) for p in possible if p != Directions.NA], end="")
 
         if self.dir_queue in possible:
             self.dir = self.dir_queue
@@ -185,6 +207,11 @@ class Player():
             self.pos = CoordinatesFloat(self.map_dimensions.x - 1, self.pos.y)
         if self.pos.y >= self.map_dimensions.y - 1:
             self.pos = CoordinatesFloat(self.pos.x, self.map_dimensions.y - 1)
+
+    def update_sprite_state(self) -> None:
+        if 0.05 <= time.time() - self.timer:
+            self.sprite_state = (self.sprite_state + 1) % 4
+            self.timer = time.time()
 
     def reset(self) -> None:
         self.pos = CoordinatesFloat(*self.starting_pos)
@@ -232,9 +259,11 @@ class Player():
 #         if self.pos.y < 0:
 #             self.pos = CoordinatesFloat(self.pos.x, 0)
 #         if self.pos.x >= self.map_dimensions.x:
-#             self.pos = CoordinatesFloat(self.map_dimensions.x - 1, self.pos.y)
+#             self.pos = CoordinatesFloat(self.map_dimensions.x - 1,
+#                                         self.pos.y)
 #         if self.pos.y >= self.map_dimensions.y:
-#             self.pos = CoordinatesFloat(self.pos.x, self.map_dimensions.y - 1)
+#             self.pos = CoordinatesFloat(self.pos.x,
+#                                         self.map_dimensions.y - 1)
 
 #     def die(self) -> None:
 #         self.target = self.starting_pos
@@ -321,7 +350,7 @@ class Maze:
         self.current_map += 1
         # First mazebuses configured seed;
         # the next levels get no seed, so generator makes random maze.
-        seed = self.args.seed if self.current_map == 0 else None
+        seed = self.args.seed  # if self.current_map == 0 else None
         map_generator = MazeGenerator(self.args.levels[self.current_map],
                                       seed)
         # ORIGINAL

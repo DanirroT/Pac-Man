@@ -1,9 +1,11 @@
 from __future__ import annotations
 from src import (Screens, CellState, Overlays, SqPOI,
                  Coordinates, CoordinatesFloat,
-                 Maze, MazeObj)
-from typing import TYPE_CHECKING
+                 Maze, MazeObj, Directions, s_round)
+from typing import TYPE_CHECKING, Any
 import pygame
+
+from src.ghost import GhostState
 
 
 if TYPE_CHECKING:
@@ -49,10 +51,10 @@ class WindowedVisualizer():
 
         self.clock = pygame.time.Clock()
 
-        pacman_png = pygame.image.load("images/pacman.png").convert_alpha()
+        self.icon = pygame.transform.rotate(pygame.image.load(
+            "images/PacMan/pacman1.png").convert_alpha(), -90)
 
-        pygame.display.set_icon(pygame.transform.scale(pacman_png,
-                                                       (64, 64)))
+        pygame.display.set_icon(pygame.transform.scale(self.icon, (64, 64)))
 
         pygame.display.update()
 
@@ -116,7 +118,12 @@ class WindowedVisualizer():
             round(((pos.y - self.middle_map.y) * self.cell_size)
                   + self.dimensions.y/2
                   + ((self.cell_size / 2) if "b" in str(poi) else 0)
-                  - ((self.cell_size / 2) if "t" in str(poi) else 0)))
+                  - ((self.cell_size / 2) if "t" in str(poi) else 0)
+                  + self.margins.y / 10))
+
+    def get_maze(self, maze: Maze) -> None:
+        self.maze_manager = maze
+        self.maze_obj = maze.maze
 
     def build_menus(self) -> None:
 
@@ -175,7 +182,8 @@ class WindowedVisualizer():
         self.pause_overlay.fill((0, 0, 0))
         pause_text = self.title_1_font.render("Paused", True, (255, 255, 255))
         self.pause_overlay.blit(pause_text, pause_text.get_rect(
-            center=(self.dimensions.x // 2, self.dimensions.y // 2)))
+            center=(self.dimensions.x // 2,
+                    self.dimensions.y // 2 + self.text_size * 2)))
 
         self.starting_overlay = pygame.Surface(self.dimensions)
         self.starting_overlay.set_alpha(128)
@@ -183,7 +191,8 @@ class WindowedVisualizer():
         pause_text = self.title_1_font.render(
             "Press any key to start", True, (255, 255, 255))
         self.starting_overlay.blit(pause_text, pause_text.get_rect(
-            center=(self.dimensions.x // 2, self.dimensions.y // 2)))
+            center=(self.dimensions.x // 2,
+                    self.dimensions.y // 2 + self.text_size * 2)))
 
         self.scoring_static = pygame.Surface(self.dimensions)
         self.scoring_static.fill((0, 0, 0))
@@ -202,7 +211,7 @@ class WindowedVisualizer():
         # self.maze_size = Coordinates(len(map_obj[0]), len(map_obj))
         self.maze_background = pygame.Surface(self.dimensions)
 
-        self.maze_background.fill((0, 0, 0))
+        self.maze_background.fill((10, 10, 10))
 
         self.middle_map = (
             CoordinatesFloat((self.maze_obj.size.x - 1) / 2,
@@ -213,12 +222,12 @@ class WindowedVisualizer():
         self.cell_size = min(
             round((self.dimensions.x - (2 * self.margins.x))
                   / self.maze_obj.size.x),
-            round((self.dimensions.y - (2 * self.margins.y))
+            round((self.dimensions.y - (2.5 * self.margins.y))
                   / self.maze_obj.size.y)
         )
 
         self.s_obj_size = round(self.cell_size / 6)
-        self.l_obj_size = round(self.s_obj_size * 2)
+        self.l_obj_size = round(self.s_obj_size * 4)
         self.text_size = 20
 
         self.text_margin = int(self.text_size * 0.75)
@@ -283,6 +292,11 @@ class WindowedVisualizer():
                          (middle_display.x, 0), 5)
         """
 
+        pygame.draw.rect(self.maze_background, (0, 0, 0), (
+            self.get_sq_poi(self.maze_obj.maze[0][0].loc, SqPOI.TL),
+            self.get_sq_poi(self.maze_obj.maze[-1][-1].loc, SqPOI.BR)
+            - self.get_sq_poi(self.maze_obj.maze[0][0].loc, SqPOI.TL)))
+
         for line in self.maze_obj.maze:
             for cell in line:
                 # print("top  " if cell.walls.up else "     ", end="")
@@ -323,6 +337,28 @@ class WindowedVisualizer():
                         self.get_sq_poi(cell.loc, SqPOI.BR),
                         self.get_sq_poi(cell.loc, SqPOI.BL),
                         self.s_obj_size)
+            #     pygame.draw.circle(
+            #         self.maze_background, (0, 0, 255),
+            #         self.get_sq_poi(cell.loc, SqPOI.TL)
+            #         - Coordinates(-1, -1),
+            #         s_round(self.s_obj_size / 2))
+
+            # pygame.draw.circle(
+            #     self.maze_background, (0, 0, 255),
+            #     self.get_sq_poi(line[-1].loc, SqPOI.TR)
+            #     - Coordinates(-1, -1),
+            #     s_round(self.s_obj_size / 2))
+
+        pygame.draw.circle(
+            self.maze_background, (0, 0, 255),
+            self.get_sq_poi(self.maze_obj.maze[-1][-1].loc, SqPOI.BR)
+            - Coordinates(-1, -1),
+            s_round(self.s_obj_size / 2) - 1)
+
+        text = self.r_text_font.render("Lives:",
+                                       True, (255, 255, 255))
+        self.maze_background.blit(text, text.get_rect(
+            center=(self.get_sq_poi(Coordinates(0, -2), SqPOI.BR))))
 
     def put_map_obj(self) -> None:
 
@@ -331,24 +367,84 @@ class WindowedVisualizer():
                                self.get_sq_poi(gum), self.s_obj_size)
         for supergum in self.maze_manager.supergum:
             pygame.draw.circle(self.screen, (255, 184, 174),
-                               self.get_sq_poi(supergum), self.l_obj_size)
+                               self.get_sq_poi(supergum), self.l_obj_size / 3)
+        lives = pygame.transform.scale(self.icon, (self.cell_size * 0.7,
+                                                   self.cell_size * 0.7))
+        for lv in range(self.maze_manager.player.lives):
+            self.screen.blit(
+                lives, self.get_sq_poi(Coordinates(3 + lv, -2), SqPOI.L))
+
+        ghost_sprite_group: Any
+
         for ghost in self.maze_manager.ghosts:
-            pygame.draw.circle(self.screen, ghost.color,
-                               self.get_sq_poi(ghost.pos), self.l_obj_size)
-        pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
-            self.maze_manager.player.pos), self.l_obj_size)
+
+            if ghost.state == GhostState.EATEN:
+                ghost_sprite_group = ghost.sprites.eyes
+
+                ghost_sprite = pygame.transform.scale(
+                    ghost_sprite_group[ghost.dir],
+                    (self.l_obj_size, self.l_obj_size))
+
+            elif ghost.state == GhostState.FRIGHTENED:
+                ghost_sprite_group = ghost.sprites.frightened
+
+                ghost_sprite = pygame.transform.scale(
+                    ghost_sprite_group[ghost.sprite_state % 2][
+                        ghost.sprite_state // 2],
+                    (self.l_obj_size, self.l_obj_size))
+
+            else:
+                ghost_sprite_group = ghost.sprites.alive
+
+                ghost_sprite = pygame.transform.scale(
+                    ghost_sprite_group[ghost.dir][ghost.sprite_state // 2],
+                    (self.l_obj_size, self.l_obj_size))
+
+            self.screen.blit(ghost_sprite, ghost_sprite.get_rect(
+                center=self.get_sq_poi(ghost.pos)))
+            # pygame.draw.circle(self.screen, ghost.color,
+            #                    self.get_sq_poi(ghost.pos),
+            #                    self.l_obj_size / 2)
+        rotation = (
+            0 if self.maze_manager.player.dir == Directions.UP else
+            90 if self.maze_manager.player.dir == Directions.LEFT else
+            180 if self.maze_manager.player.dir == Directions.DOWN else
+            270)
+        player_sprite_state = self.maze_manager.player.sprite_state
+        if self.maze_manager.player.sprite_state == 3:
+            player_sprite_state = 1
+
+        player_sprite = pygame.transform.scale(pygame.transform.rotate(
+            self.maze_manager.player.sprites[player_sprite_state],
+            rotation), (self.l_obj_size, self.l_obj_size))
+        self.screen.blit(player_sprite, player_sprite.get_rect(
+            center=self.get_sq_poi(self.maze_manager.player.pos)))
+        # pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
+        #     self.maze_manager.player.pos), self.l_obj_size / 2)
         # pygame.draw.circle(self.screen, (255, 255, 0), self.get_sq_poi(
         #     Coordinates(self.maze_manager.maze.size.x // 2,
         #                 self.maze_manager.maze.size.y // 2)),
-        #                 self.s_obj_size)
+        #                 self.s_obj_size / 2)
+
+    def death_animation(self) -> None:
+
+        player = self.maze_manager.player
+
+        player.sprite_state = 0
+        while player.sprite_state < 13:
+            self.update_display(Screens.GAME)
+            pygame.time.delay(200)
+            player.sprite_state += 1
+        self.update_display(Screens.GAME)
+        pygame.time.delay(2000)
 
     def update_display(self, current_screen: Screens,
                        dimensions: Coordinates | bool = False,
                        player_name: str = ""
                        ) -> None:
 
-        if len(player_name):
-            print(f"Player Name: {player_name}")
+        # if len(player_name):
+        #   -  print(f"Player Name: {player_name}")
 
         if dimensions and isinstance(dimensions, Coordinates):
             self.dimensions = dimensions
@@ -407,7 +503,7 @@ class WindowedVisualizer():
                                         True, (255, 255, 255))
         self.screen.blit(text, text.get_rect(
             center=(self.dimensions.x // 2,
-                    self.dimensions.y // 2 + self.text_size * 3)))
+                    self.dimensions.y // 2 + self.text_size * 5)))
 
         pygame.display.update()
 
@@ -417,8 +513,8 @@ class WindowedVisualizer():
         elif screen == Screens.LOSE:
             self.screen.blit(self.lose_static, (0, 0))
 
-        text = self.title_2_font.render(f"Final Score: {score}",
-                                        True, (255, 255, 255))
+        text = self.title_2_font.render(
+            f"{score}", True, (255, 255, 255))
         self.screen.blit(text, text.get_rect(
             center=(self.dimensions.x // 2,
                     self.dimensions.y // 2 + self.text_size * 3)))

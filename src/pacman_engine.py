@@ -72,6 +72,7 @@ class PacMan:
         self.overlay = None
         self.space_timer = None
         try:
+
             while True:
                 self.visualizer.clock.tick(tick_rate)
                 frame_step = self.visualizer.clock.get_rawtime()
@@ -91,34 +92,38 @@ class PacMan:
                             self.maze.player.pos.x,
                             s_round(self.maze.player.pos.y))
 
-                    corrent_cell = self.maze.maze.maze[
+                    current_cell = self.maze.maze.maze[
                         s_round(self.maze.player.pos.y)][
                             s_round(self.maze.player.pos.x)]
 
-                    if not self.overlay:
-                        print(
-                            self.maze.player.pos, self.maze.player.dir,
-                            (self.maze.player.dir_queue
-                             if self.maze.player.dir_queue else None),
-                            self.is_close_int(self.maze.player.pos.x),
-                            self.is_close_int(self.maze.player.pos.y),
-                            corrent_cell.state,
-                            end="")
+                    # if not self.overlay:
+                    #   -  print(
+                    #         self.maze.player.pos, self.maze.player.dir,
+                    #         (self.maze.player.dir_queue
+                    #          if self.maze.player.dir_queue else None),
+                    #         self.is_close_int(self.maze.player.pos.x),
+                    #         self.is_close_int(self.maze.player.pos.y),
+                    #         current_cell.state,
+                    #         end="")
 
                     if (self.is_close_int_coords(self.maze.player.pos)):
-                        self.maze.player.change_dir(corrent_cell)
+                        self.maze.player.change_dir(current_cell)
 
                     self.maze.player.move(
-                        (5/(tick_rate)), corrent_cell.walls
+                        (5/(tick_rate)), current_cell.walls
                         if (self.is_close_int_coords(self.maze.player.pos))
                         else None)
-                    
-                    #
+
                     for ghost in self.maze.ghosts:
                         ghost.update(self.maze.maze, self.maze.player,
                                      5 / tick_rate, 1 / tick_rate)
 
                     self.detect_obj_collisions()
+
+                    self.maze.player.update_sprite_state()
+                    for ghost in self.maze.ghosts:
+                        ghost.update_sprite_state()
+
                     self.visualizer.update_display(self.current_screen)
 
                     if self.space_timer:
@@ -130,7 +135,7 @@ class PacMan:
                             self.space = False
                             self.space_timer = None
 
-                    print()
+                    # print()
 
         except CloseProgram:
             self.visualizer.terminate()
@@ -213,11 +218,11 @@ class PacMan:
                 self.player_name += event.unicode
 
             if self.current_screen == Screens.START:
-                print("Start")
-                print(self.highscore)
+                # print("Start")
+                # print(self.highscore)
                 self.visualizer.show_start(self.highscore)
             else:
-                print("continue")
+                # print("continue")
                 self.visualizer.update_display(
                     self.current_screen, player_name=self.player_name)
 
@@ -293,8 +298,7 @@ class PacMan:
         try:
             self.maze.load_next_map()
             # self.maze.get_wall_less()
-            self.visualizer.maze_manager = self.maze
-            self.visualizer.maze_obj = self.maze.maze
+            self.visualizer.get_maze(self.maze)
             self.visualizer.update_display(self.current_screen,
                                            True)
             self.overlay = Overlays.STARTING
@@ -309,14 +313,17 @@ class PacMan:
         for ghost in self.maze.ghosts:
             if (pow(ghost.pos.x - self.maze.player.pos.x, 2) +
                     pow(ghost.pos.y - self.maze.player.pos.y, 2) < 0.5):
-                # Scenario depend on ghost state (ghost.py, tried to make life easier):
+                # Scenario depend on ghost state (ghost.py,
+                #                                 tried to make life easier):
                 # edible -> eaten, scored once
-                # chasing -> costs a life; eaten ghosts are harmless while return to respawn
+                # chasing -> costs a life;
+                #   eaten ghosts are harmless while return to respawn
                 if ghost.state == GhostState.FRIGHTENED:
                     ghost.die()
                     self.maze.score += self.args.points_per_ghost
                 elif (ghost.state == GhostState.CHASE
                         and not self.maze.player.invincibility):
+                    self.visualizer.death_animation()
                     self.maze.player.lives -= 1
                     if self.maze.player.lives <= 0:
                         self.current_screen = Screens.LOSE
@@ -325,9 +332,10 @@ class PacMan:
                         # Ghosts go back to corners
                         for other in self.maze.ghosts:
                             other.reset()
+                        self.overlay = Overlays.STARTING
                     return
 
-                # ORIGINAL IN CASE 
+                # ORIGINAL IN CASE
                 # if self.maze.player.supergum_power:
                 #     ghost.die()
                 #     self.maze.score += self.args.points_per_ghost
@@ -358,8 +366,8 @@ class PacMan:
                     # ORIGINAL
                     # self.maze.player.supergum_power = True
 
-        # if len(self.maze.supergum) + len(self.maze.pacgum) == 0:
-        if len(self.maze.pacgum) == 0:
+        # if len(self.maze.pacgum) == 0:
+        if len(self.maze.supergum) + len(self.maze.pacgum) == 0:
             self.current_screen = Screens.WIN
 
     @staticmethod

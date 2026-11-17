@@ -10,11 +10,15 @@ from __future__ import annotations
 import random
 from enum import Enum
 from typing import TYPE_CHECKING
+import pygame
+import time
+
 from .helper import Coordinates, CoordinatesFloat, Directions, s_round
 from .maze_graph import direction_between, find_path
 
 if TYPE_CHECKING:
     from .map_manager import MazeObj, Player
+    from pygame import Surface
 
 Color = tuple[int, int, int]
 
@@ -95,21 +99,77 @@ class Ghost:
     pos: what gets drawn and used for collisions
     cell: last cell centre ghost reached
     heading_to: next cell centre ghost goes
-    
+
     Ghost is only ever on straight line between two cells
     """
+
+    class GhostSprites():
+
+        alive: dict[Directions, tuple[Surface, Surface]]
+        frightened: tuple[tuple[Surface, Surface], tuple[Surface, Surface]]
+        eyes: dict[Directions, Surface]
+
+        def __init__(self) -> None:
+
+            self.alive = {}
+            self.eyes = {}
+
+            self.alive[Directions.UP] = (
+                pygame.image.load("images/Ghosts/GhostU1.png").convert_alpha(),
+                pygame.image.load("images/Ghosts/GhostU2.png").convert_alpha())
+
+            self.alive[Directions.RIGHT] = (
+                pygame.image.load("images/Ghosts/GhostR1.png").convert_alpha(),
+                pygame.image.load("images/Ghosts/GhostR2.png").convert_alpha())
+
+            self.alive[Directions.DOWN] = (
+                pygame.image.load("images/Ghosts/GhostD1.png").convert_alpha(),
+                pygame.image.load("images/Ghosts/GhostD2.png").convert_alpha())
+
+            self.alive[Directions.LEFT] = (
+                pygame.image.load("images/Ghosts/GhostL1.png").convert_alpha(),
+                pygame.image.load("images/Ghosts/GhostL2.png").convert_alpha())
+
+            self.frightened = ((
+                pygame.image.load(
+                    "images/Ghosts/GhostFrightenedB1.png").convert_alpha(),
+                pygame.image.load(
+                    "images/Ghosts/GhostFrightenedB2.png").convert_alpha()),
+                    (pygame.image.load(
+                        "images/Ghosts/GhostFrightenedW1.png").convert_alpha(),
+                     pygame.image.load("images/Ghosts/GhostFrightenedW2.png"
+                                       ).convert_alpha()))
+
+            self.eyes[Directions.UP] = (
+                pygame.image.load("images/Ghosts/GhostEyesU.png"
+                                  ).convert_alpha())
+            self.eyes[Directions.RIGHT] = (
+                pygame.image.load("images/Ghosts/GhostEyesR.png"
+                                  ).convert_alpha())
+            self.eyes[Directions.DOWN] = (
+                pygame.image.load("images/Ghosts/GhostEyesD.png"
+                                  ).convert_alpha())
+            self.eyes[Directions.LEFT] = (
+                pygame.image.load("images/Ghosts/GhostEyesL.png"
+                                  ).convert_alpha())
+
+    starting_pos: Coordinates
     pos: CoordinatesFloat
     cell: Coordinates
-    heading_to: Coordinates | None
-    starting_pos: Coordinates
     dir: Directions
     map_dimensions: Coordinates
-    target: Coordinates | None
+
     state: GhostState
+    heading_to: Coordinates | None
+    target: Coordinates | None
     style: GhostStyle
     timer: float
     frozen: bool
+
     base_color: Color
+    sprites: GhostSprites
+    sprite_state: int
+    step: float
 
     def __init__(self, color: Color, pos: Coordinates,
                  map_dimensions: Coordinates,
@@ -126,6 +186,40 @@ class Ghost:
         self.frozen = False
         self._wander: Coordinates | None = None
         self.reset()
+        self.sprites = self.GhostSprites()
+        self.sprites.alive = {dir: self.swap_color(sprites)
+                              for dir, sprites in self.sprites.alive.items()}
+        self.sprite_state = 1
+        self.step = 0.0
+
+    def swap_color(self, surfaces: tuple[Surface, Surface]
+                   ) -> tuple[Surface, Surface]:
+        """
+        Change sprite color when initializing ghost sprites
+        """
+
+        if self.base_color == (127, 127, 127):
+            return surfaces
+        if self.base_color == (255, 255, 255):
+            self.base_color = (254, 254, 254)
+        img_copy_1 = pygame.Surface(surfaces[0].get_size())
+        img_copy_1.fill(self.base_color)
+        surfaces[0].set_colorkey((127, 127, 127))
+        img_copy_1.blit(surfaces[0], (0, 0))
+        surfaces[0].set_colorkey((255, 255, 255))
+
+        img_copy_2 = pygame.Surface(surfaces[1].get_size())
+        img_copy_2.fill(self.base_color)
+        surfaces[1].set_colorkey((127, 127, 127))
+        img_copy_2.blit(surfaces[1], (0, 0))
+        surfaces[1].set_colorkey((255, 255, 255))
+
+        return img_copy_1, img_copy_2
+
+    def update_sprite_state(self) -> None:
+        if 0.1 <= time.time() - self.step:
+            self.sprite_state = (self.sprite_state + 1) % 4
+            self.step = time.time()
 
     @property
     def color(self) -> Color:

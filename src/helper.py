@@ -14,6 +14,11 @@ class Coordinates(NamedTuple):
     def __str__(self) -> str:
         return f"x: {self.x:02d}, y: {self.y:02d}"
 
+    def __sub__(self, other: "Coordinates") -> "Coordinates":
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return Coordinates(self.x - other.x, self.y - other.y)
+
 
 class CoordinatesFloat(NamedTuple):
     x: float
@@ -92,9 +97,12 @@ def s_round(n: float) -> int:
     """
     Rounds a float to the nearest integer, with ties rounding away from zero.
     """
-    if int(n) - n <= -0.5:
-        return int(n) + 1
-    elif int(n) - n >= 0.5:
-        return int(n) - 1
+
+    v = int(n)
+
+    if v - n <= -0.5:
+        return v + 1
+    elif v - n >= 0.5:
+        return v - 1
     else:
-        return int(n)
+        return v
