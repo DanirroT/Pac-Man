@@ -189,6 +189,11 @@ class PacMan:
 
         if event.type == pygame.KEYDOWN:
             if (event.key == pygame.K_RETURN):
+                if self.current_screen == Screens.LOSE:
+                    self.current_screen = Screens.SCORING
+                    self.player_name = ""
+                    self.visualizer.update_display(self.current_screen)
+                    return
                 if self.current_screen == Screens.START:
                     self.maze.current_map = -1
                 self.next_game()
@@ -286,6 +291,11 @@ class PacMan:
             elif (event.key == pygame.K_SPACE):
                 self.space = True
                 self.space_timer = time()
+
+            elif (event.key == pygame.K_n):
+                # Skip level
+                self.maze.pacgum.clear()
+                self.maze.supergum.clear()
 
         elif event.type == pygame.KEYUP:
             if (event.key == pygame.K_SPACE):

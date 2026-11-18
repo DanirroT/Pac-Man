@@ -1,15 +1,34 @@
 import sys
 import json
+import logging
 from typing import Any
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from src import Coordinates
+
+
+logger = logging.getLogger(__name__)
+
+MIN_LEVELS = 10  # the subject asks for at least 10 levels
+
+
+def default_levels(count: int = MIN_LEVELS) -> list[Coordinates]:
+    return [Coordinates(20 + i, 15 + i // 2) for i in range(count)]
+
+
+def ensure_min_levels(levels: list[Coordinates]) -> list[Coordinates]:
+    if len(levels) >= MIN_LEVELS:
+        return levels
+    logger.warning("Config has %d level(s), adding default levels "
+                   "to reach %d", len(levels), MIN_LEVELS)
+    return levels + default_levels()[len(levels):]
 
 
 class PMArgs(BaseModel):
     highscore_filename: str = Field(min_length=1)
     # levels: list[Coordinates] = Field(min_length=10)
-    levels: list[Coordinates] = Field()
+    # levels: list[Coordinates] = Field()
+    levels: list[Coordinates] = Field(default_factory=default_levels)
     lives: int = Field(gt=0)
     pacgum: int = Field(gt=0)
     points_per_pacgum: int = Field(gt=0)
@@ -17,6 +36,14 @@ class PMArgs(BaseModel):
     points_per_ghost: int = Field(gt=0)
     seed: int
     level_max_time: int = Field(gt=0)
+
+    @field_validator("levels")
+    @classmethod
+    def _min_levels(cls, levels: list[Coordinates]) -> list[Coordinates]:
+        """
+        Add default levels when config has fewer than 10
+        """
+        return ensure_min_levels(levels)
 
 
 def get_from_json_file(file_path: str | Path,

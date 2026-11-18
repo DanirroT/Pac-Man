@@ -69,7 +69,7 @@ class GhostStyle(Enum):
 
 # Ghost speed compared to what pacman gets each frame
 SPEED: dict[GhostState, float] = {
-    GhostState.CHASE: 0.85,
+    GhostState.CHASE: 0.70,
     GhostState.FRIGHTENED: 0.5,
     GhostState.EATEN: 2.0,
 }
