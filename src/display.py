@@ -450,7 +450,7 @@ class WindowedVisualizer():
             self.dimensions = dimensions
             # print("resize to:", w, h)
 
-        elif current_screen == Screens.GAME:
+        if current_screen == Screens.GAME:
             if dimensions:
                 self.build_map()
             self.screen.blit(self.maze_background, (0, 0))
